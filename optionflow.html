@@ -1,0 +1,4021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OptionFlow — Options Trading Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================
+   OPTIONFLOW v2 — Terminal Options Dashboard
+   ============================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-deep: #0f0f11;
+  --bg-panel: #16161a;
+  --bg-panel-2: #1c1c22;
+  --bg-elevated: #22222a;
+  --border: #2a2a33;
+  --border-glow: #3a3a48;
+  --text-primary: #e8e8ec;
+  --text-secondary: #9a9aa8;
+  --text-dim: #5a5a68;
+  --accent-green: #00ff88;
+  --accent-green-dim: #00cc6a;
+  --accent-amber: #f5a623;
+  --accent-red: #ff3b5c;
+  --accent-blue: #4a9eff;
+  --accent-purple: #a855f7;
+  --mono: 'JetBrains Mono', 'Courier New', monospace;
+  --sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+html, body {
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at top, rgba(0, 255, 136, 0.03) 0%, transparent 50%),
+              radial-gradient(ellipse at bottom right, rgba(74, 158, 255, 0.02) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 24px 60px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ========== HEADER ========== */
+header {
+  position: sticky;
+  top: 0;
+  background: rgba(15, 15, 17, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  z-index: 100;
+  margin: 0 -24px 24px;
+  overflow: hidden;
+}
+
+header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 136, 0.015) 2px, rgba(0, 255, 136, 0.015) 3px);
+  pointer-events: none;
+}
+
+.header-inner {
+  max-width: 1600px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  position: relative;
+  flex-wrap: wrap;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.5px;
+}
+
+.logo-dot {
+  width: 10px; height: 10px;
+  background: var(--accent-green);
+  border-radius: 50%;
+  box-shadow: 0 0 12px var(--accent-green);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+
+.logo-text .hi { color: var(--accent-green); }
+.logo-text .lo { color: var(--text-primary); }
+
+.search-box {
+  flex: 1;
+  min-width: 240px;
+  max-width: 480px;
+  position: relative;
+}
+
+.search-box input {
+  width: 100%;
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px 10px 40px;
+  color: var(--text-primary);
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: var(--accent-green);
+  box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.1);
+}
+
+.search-box::before {
+  content: '▸';
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent-green);
+  font-family: var(--mono);
+  font-weight: 700;
+}
+
+.header-actions { display: flex; gap: 8px; align-items: center; }
+
+.mode-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  border: 1px solid;
+}
+
+.mode-badge.demo { background: rgba(245, 166, 35, 0.1); color: var(--accent-amber); border-color: var(--accent-amber); }
+.mode-badge.live { background: rgba(0, 255, 136, 0.1); color: var(--accent-green); border-color: var(--accent-green); }
+
+.btn {
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn:hover { background: var(--bg-elevated); border-color: var(--border-glow); }
+
+.btn.primary {
+  background: var(--accent-green);
+  color: #0a0a0c;
+  border-color: var(--accent-green);
+  font-weight: 600;
+}
+
+.btn.primary:hover { background: var(--accent-green-dim); }
+.btn.ghost { background: transparent; }
+.btn.danger { color: var(--accent-red); border-color: rgba(255, 59, 92, 0.3); }
+.btn.danger:hover { background: rgba(255, 59, 92, 0.1); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+
+/* ========== DEMO BANNER ========== */
+.demo-banner {
+  background: linear-gradient(90deg, rgba(245, 166, 35, 0.08), rgba(245, 166, 35, 0.02));
+  border: 1px solid rgba(245, 166, 35, 0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.demo-banner strong { color: var(--accent-amber); font-family: var(--mono); }
+.demo-banner.hidden { display: none; }
+
+/* ========== PORTFOLIO BAR ========== */
+.portfolio-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.port-stat {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.port-stat::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: var(--accent-blue);
+}
+
+.port-stat.green::before { background: var(--accent-green); }
+.port-stat.amber::before { background: var(--accent-amber); }
+.port-stat.red::before { background: var(--accent-red); }
+.port-stat.purple::before { background: var(--accent-purple); }
+
+.port-stat-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 4px;
+}
+
+.port-stat-value {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.port-stat-value.green { color: var(--accent-green); }
+.port-stat-value.red { color: var(--accent-red); }
+.port-stat-value.amber { color: var(--accent-amber); }
+
+/* ========== SNAPSHOT ========== */
+.snapshot-wrap {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.snap-top {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.snap-main {
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 130px;
+}
+
+.snap-main-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+
+.snap-ticker {
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.snap-price {
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.snap-change {
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.snap-spark {
+  margin-top: 8px;
+  height: 40px;
+}
+
+.snap-stat {
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 130px;
+}
+
+.snap-stat .label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.snap-stat .value {
+  font-family: var(--mono);
+  font-size: 17px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.snap-stat .sub {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.iv-bar {
+  height: 5px;
+  background: var(--bg-elevated);
+  border-radius: 3px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+.iv-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s ease-out;
+}
+
+.iv-low { background: var(--accent-green); }
+.iv-mid { background: var(--accent-amber); }
+.iv-high { background: var(--accent-red); }
+
+.snap-bottom {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.snap-info {
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.snap-info .label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 6px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+
+.snap-info .tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 2px 6px;
+  background: rgba(74, 158, 255, 0.15);
+  color: var(--accent-blue);
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}
+
+.snap-info .primary {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.snap-info .row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.snap-info .row .v { color: var(--text-primary); font-weight: 500; }
+
+.chart-expanded {
+  margin-top: 16px;
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  display: none;
+}
+
+.chart-expanded.active { display: block; }
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.chart-title { font-size: 14px; font-weight: 600; }
+
+.chart-legend {
+  display: flex;
+  gap: 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+
+.chart-legend .swatch {
+  display: inline-block;
+  width: 10px; height: 2px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* ========== TABS ========== */
+.main-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  padding: 6px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  position: sticky;
+  top: 90px;
+  z-index: 50;
+}
+
+.main-tab {
+  flex: 1;
+  padding: 10px 18px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.main-tab:hover { color: var(--text-primary); background: var(--bg-panel-2); }
+
+.main-tab.active {
+  background: var(--bg-elevated);
+  color: var(--accent-green);
+  box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.2), 0 0 12px rgba(0, 255, 136, 0.1);
+}
+
+.main-tab .count {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 2px 6px;
+  background: rgba(154, 154, 168, 0.15);
+  border-radius: 3px;
+  color: var(--text-secondary);
+}
+
+.main-tab.active .count { background: rgba(0, 255, 136, 0.15); color: var(--accent-green); }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ========== SECTIONS ========== */
+.section {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px;
+  margin-bottom: 20px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title .num {
+  font-family: var(--mono);
+  color: var(--accent-green);
+  font-size: 12px;
+  background: rgba(0, 255, 136, 0.1);
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.section-subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 3px;
+}
+
+/* ========== EXPIRATION PILLS ========== */
+.exp-pills {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 8px 4px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+}
+
+.exp-pills::-webkit-scrollbar { height: 4px; }
+
+.exp-pill {
+  flex-shrink: 0;
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 76px;
+}
+
+.exp-pill:hover { border-color: var(--border-glow); color: var(--text-primary); }
+
+.exp-pill.active {
+  background: var(--bg-elevated);
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.15);
+}
+
+.exp-pill .date { font-size: 12px; font-weight: 600; }
+.exp-pill .dte { font-size: 10px; opacity: 0.7; }
+.exp-pill.weekly .dte { color: var(--accent-blue); }
+.exp-pill.monthly .dte { color: var(--accent-amber); }
+
+.exp-pill-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-top: 2px;
+  letter-spacing: 0.5px;
+}
+
+.exp-pill.weekly .exp-pill-tag { background: rgba(74, 158, 255, 0.1); color: var(--accent-blue); }
+.exp-pill.monthly .exp-pill-tag { background: rgba(245, 166, 35, 0.1); color: var(--accent-amber); }
+.exp-pill.leap .exp-pill-tag { background: rgba(168, 85, 247, 0.1); color: var(--accent-purple); }
+
+/* Subsection */
+.subsection {
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.subsection:last-child { margin-bottom: 0; }
+
+.subsection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.subsection-title {
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.subsection-title .tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  padding: 2px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}
+
+/* ========== TABLES ========== */
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-deep);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 12px;
+  min-width: 800px;
+}
+
+thead { background: var(--bg-elevated); }
+
+th {
+  text-align: left;
+  padding: 9px 12px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  font-family: var(--sans);
+}
+
+td {
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(42, 42, 51, 0.5);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+tr:hover td { background: rgba(0, 255, 136, 0.02); }
+tr:last-child td { border-bottom: none; }
+td.right, th.right { text-align: right; }
+td.center, th.center { text-align: center; }
+
+.g { color: var(--accent-green); }
+.r { color: var(--accent-red); }
+.a { color: var(--accent-amber); }
+.b { color: var(--accent-blue); }
+.dim { color: var(--text-dim); }
+
+/* ========== SUGGESTION CARDS ========== */
+.suggestions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.sug-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-left: 4px solid;
+  border-radius: 8px;
+  padding: 14px;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.sug-card:hover { transform: translateY(-2px); }
+.sug-card.conservative { border-left-color: var(--accent-green); }
+.sug-card.moderate { border-left-color: var(--accent-amber); }
+.sug-card.aggressive { border-left-color: var(--accent-red); }
+
+.sug-tier {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.conservative .sug-tier { color: var(--accent-green); }
+.moderate .sug-tier { color: var(--accent-amber); }
+.aggressive .sug-tier { color: var(--accent-red); }
+
+.sug-headline {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.sug-sub {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.sug-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+  margin-bottom: 10px;
+}
+
+.sug-stat {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.sug-stat .k { color: var(--text-secondary); }
+.sug-stat .v { color: var(--text-primary); font-weight: 600; }
+
+.sug-rationale {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  padding: 8px 10px;
+  background: var(--bg-deep);
+  border-radius: 6px;
+  margin-bottom: 10px;
+  border-left: 2px solid var(--border-glow);
+}
+
+.sug-actions { display: flex; gap: 6px; }
+
+/* ========== MULTI-LEG ========== */
+.multileg-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.ml-card {
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  border-left: 4px solid;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.ml-card.conservative { border-left-color: var(--accent-green); }
+.ml-card.moderate { border-left-color: var(--accent-amber); }
+.ml-card.aggressive { border-left-color: var(--accent-red); }
+
+.ml-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.ml-tier {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.conservative .ml-tier { color: var(--accent-green); }
+.moderate .ml-tier { color: var(--accent-amber); }
+.aggressive .ml-tier { color: var(--accent-red); }
+
+.ml-pop {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.ml-structure { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+
+.ml-legs {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  line-height: 1.7;
+  padding: 8px 10px;
+  background: var(--bg-deep);
+  border-radius: 6px;
+}
+
+.ml-legs .leg-sell { color: var(--accent-red); }
+.ml-legs .leg-buy { color: var(--accent-green); }
+
+.ml-payoff {
+  margin: 10px 0;
+  background: var(--bg-deep);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.ml-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px 12px;
+  margin-bottom: 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.ml-metric { display: flex; justify-content: space-between; }
+.ml-metric .k { color: var(--text-secondary); }
+.ml-metric .v { font-weight: 600; }
+
+.ml-greeks {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.ml-greeks .greek-val {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: block;
+  margin-top: 2px;
+}
+
+/* ========== MODAL ========== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-overlay.active { display: flex; }
+
+.modal {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-glow);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 520px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 0 40px rgba(0, 255, 136, 0.1);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.modal-title { font-size: 18px; font-weight: 700; }
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 24px;
+  cursor: pointer;
+  width: 32px; height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.modal-close:hover { background: var(--bg-elevated); color: var(--text-primary); }
+
+.form-group { margin-bottom: 14px; }
+
+.form-group label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 12px;
+  color: var(--text-primary);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent-green); }
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.modal-info {
+  background: var(--bg-deep);
+  border-left: 3px solid var(--accent-blue);
+  padding: 12px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.modal-info a { color: var(--accent-green); text-decoration: none; }
+.modal-info a:hover { text-decoration: underline; }
+
+.stat-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; }
+.stat-label { font-size: 10px; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px; margin-bottom: 6px; }
+.stat-val { font-family: var(--mono); font-size: 20px; font-weight: 500; color: var(--text-primary); line-height: 1.2; }
+.stat-val.g { color: var(--accent-green); }
+.stat-val.r { color: var(--accent-red); }
+.stat-sub { font-size: 10px; color: var(--text-dim); margin-top: 4px; font-family: var(--mono); }
+.pill-blue { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); padding: 2px 8px; border-radius: 10px; }
+.pill-gray { background: rgba(156,163,175,0.15); color: #9ca3af; border: 1px solid rgba(156,163,175,0.3); padding: 2px 8px; border-radius: 10px; }
+
+/* ========== STATUS ========== */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.status-open { background: rgba(245, 166, 35, 0.15); color: var(--accent-amber); }
+.status-profit { background: rgba(0, 255, 136, 0.15); color: var(--accent-green); }
+.status-risk { background: rgba(255, 59, 92, 0.15); color: var(--accent-red); }
+.status-assigned { background: rgba(74, 158, 255, 0.15); color: var(--accent-blue); }
+.status-closed { background: rgba(154, 154, 168, 0.15); color: var(--text-secondary); }
+
+/* ========== EMPTY STATE ========== */
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-secondary); }
+.empty-state .big { font-size: 36px; margin-bottom: 10px; opacity: 0.4; }
+.empty-state .msg { font-size: 14px; line-height: 1.6; }
+
+.hidden { display: none !important; }
+
+/* ========== TOAST ========== */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-glow);
+  border-left: 4px solid var(--accent-green);
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  z-index: 2000;
+  animation: slideIn 0.25s ease-out;
+  max-width: 320px;
+}
+
+.toast.error { border-left-color: var(--accent-red); }
+.toast.warn { border-left-color: var(--accent-amber); }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.tabs-inline {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-deep);
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.tab-inline {
+  padding: 5px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-weight: 500;
+  background: none;
+  border: none;
+}
+
+.tab-inline:hover { color: var(--text-primary); }
+.tab-inline.active { background: var(--bg-elevated); color: var(--accent-green); }
+
+.controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+.control-group { display: flex; flex-direction: column; gap: 4px; }
+
+.control-group label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+
+.control-group input, .control-group select {
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--text-primary);
+  font-family: var(--mono);
+  font-size: 13px;
+  min-width: 100px;
+}
+
+.control-group input:focus, .control-group select:focus { outline: none; border-color: var(--accent-green); }
+
+.toggle-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-switch input { display: none; }
+
+.toggle-switch .sw {
+  width: 32px; height: 18px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  position: relative;
+  transition: 0.2s;
+}
+
+.toggle-switch .sw::after {
+  content: '';
+  position: absolute;
+  top: 1px; left: 1px;
+  width: 14px; height: 14px;
+  background: var(--text-dim);
+  border-radius: 50%;
+  transition: 0.2s;
+}
+
+.toggle-switch input:checked + .sw { background: rgba(0, 255, 136, 0.2); border-color: var(--accent-green); }
+.toggle-switch input:checked + .sw::after { left: 15px; background: var(--accent-green); }
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 1200px) {
+  .snap-top { grid-template-columns: 1.2fr 1fr 1fr 1fr; }
+  .snap-top > *:nth-child(5), .snap-top > *:nth-child(6) { grid-column: span 2; }
+  .multileg-grid { grid-template-columns: 1fr; }
+  .suggestions { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .container { padding: 0 12px 40px; }
+  header { margin: 0 -12px 16px; padding: 12px 16px; }
+  .portfolio-bar { grid-template-columns: 1fr 1fr; }
+  .snap-top { grid-template-columns: 1fr 1fr; }
+  .snap-main { grid-column: span 2; }
+  .snap-bottom { grid-template-columns: 1fr; }
+  .section { padding: 14px; }
+  .main-tabs { position: static; }
+  .main-tab { padding: 8px 10px; font-size: 11px; }
+  .form-row { grid-template-columns: 1fr; }
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-glow); }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      <div class="logo-text"><span class="hi">option</span><span class="lo">Flow</span></div>
+    </div>
+    <div class="search-box">
+      <input id="tickerInput" type="text" placeholder="SEARCH TICKER (e.g. SOFI, AAPL, NVDA)" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="header-actions">
+      <span id="modeBadge" class="mode-badge demo">DEMO MODE</span>
+      <button class="btn ghost btn-sm" onclick="openSettings()">⚙ Settings</button>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <div id="demoBanner" class="demo-banner">
+    <strong>DEMO MODE</strong>
+    <span>All data is synthetic for demonstration. Black-Scholes greeks & realistic chains, earnings, analyst data.</span>
+  </div>
+
+  <!-- PORTFOLIO BAR (pinned) -->
+  <div class="portfolio-bar">
+    <div class="port-stat amber">
+      <div class="port-stat-label">Open Positions</div>
+      <div class="port-stat-value" id="statOpen">0</div>
+    </div>
+    <div class="port-stat green">
+      <div class="port-stat-label">Premium Collected (Open)</div>
+      <div class="port-stat-value green" id="statPremium">$0</div>
+    </div>
+    <div class="port-stat purple">
+      <div class="port-stat-label">Realized P&L</div>
+      <div class="port-stat-value" id="statPnl">$0</div>
+    </div>
+    <div class="port-stat">
+      <div class="port-stat-label">Win Rate</div>
+      <div class="port-stat-value" id="statWin">—</div>
+    </div>
+  </div>
+
+  <!-- MARKET SNAPSHOT (pinned) -->
+  <div class="snapshot-wrap" id="snapshotWrap" style="display:none">
+    <div class="snap-top" id="snapTop"></div>
+    <div class="snap-bottom" id="snapBottom"></div>
+    <div class="chart-expanded" id="chartExpanded"></div>
+  </div>
+
+  <!-- MAIN TABS -->
+  <div class="main-tabs" id="mainTabs" style="display:none">
+    <button class="main-tab active" data-tab="wheel" onclick="switchTab('wheel')">🎡 Wheel Strategy</button>
+    <button class="main-tab" data-tab="multileg" onclick="switchTab('multileg')">⚡ Multi-Leg</button>
+    <button class="main-tab" data-tab="journal" onclick="switchTab('journal')">📒 Trade Journal <span class="count" id="journalCount">0</span></button>
+    <button class="main-tab" data-tab="analytics" onclick="switchTab('analytics')">📊 Analytics</button>
+    <button class="main-tab" data-tab="import" onclick="switchTab('import')">📥 Import</button>
+  </div>
+
+  <!-- TAB: WHEEL -->
+  <div class="tab-content active" id="tab-wheel">
+
+    <!-- CSP Finder -->
+    <div class="section" id="cspSection" style="display:none">
+      <div class="section-header">
+        <div>
+          <div class="section-title"><span class="num">A1</span>Cash-Secured Put Finder</div>
+          <div class="section-subtitle">Select an expiration to see 🟢 Conservative / 🟡 Moderate / 🔴 Aggressive picks</div>
+        </div>
+        <div class="controls">
+          <label class="toggle-switch" title="Include monthlies out to 180 DTE for rolling underwater positions">
+            <input type="checkbox" id="cspShowRolls" onchange="buildCSPPills()">
+            <span class="sw"></span>
+            <span>Show +6mo (rolls)</span>
+          </label>
+          <div class="control-group">
+            <label>Min RoC %/mo</label>
+            <input type="number" id="cspMinRoc" value="2" step="0.5" min="0" onchange="renderCSPForExp()">
+          </div>
+        </div>
+      </div>
+      <div class="exp-pills" id="cspPills"></div>
+      <div id="cspForExp"></div>
+    </div>
+
+    <!-- CC Finder -->
+    <div class="section" id="ccSection" style="display:none">
+      <div class="section-header">
+        <div>
+          <div class="section-title"><span class="num">A2</span>Covered Call Finder</div>
+          <div class="section-subtitle">Post-assignment income. Set your cost basis to get accurate yield.</div>
+        </div>
+        <div class="controls">
+          <label class="toggle-switch" title="Include monthlies out to 180 DTE for rolling underwater CCs">
+            <input type="checkbox" id="ccShowRolls" onchange="buildCCPills()">
+            <span class="sw"></span>
+            <span>Show +6mo (rolls)</span>
+          </label>
+          <div class="control-group">
+            <label>Cost Basis ($)</label>
+            <input type="number" id="ccBasis" step="0.01" placeholder="auto" onchange="renderCCForExp()">
+          </div>
+        </div>
+      </div>
+      <div class="exp-pills" id="ccPills"></div>
+      <div id="ccForExp"></div>
+    </div>
+
+    <!-- Position Tracker -->
+    <div class="section" id="posSection">
+      <div class="section-header">
+        <div>
+          <div class="section-title"><span class="num">A3</span>Wheel Position Tracker</div>
+          <div class="section-subtitle">Open CSPs and CCs across all tickers</div>
+        </div>
+        <div class="controls">
+          <div class="tabs-inline">
+            <button class="tab-inline active" data-filter="open" onclick="filterPositions('open', this)">Open</button>
+            <button class="tab-inline" data-filter="closed" onclick="filterPositions('closed', this)">Closed</button>
+            <button class="tab-inline" data-filter="all" onclick="filterPositions('all', this)">All</button>
+          </div>
+        </div>
+      </div>
+      <div id="positionsContainer"></div>
+    </div>
+
+  </div>
+
+  <!-- TAB: MULTI-LEG -->
+  <div class="tab-content" id="tab-multileg">
+    <div class="section" id="multilegSection" style="display:none">
+      <div class="section-header">
+        <div>
+          <div class="section-title"><span class="num">B</span>Multi-Leg Trade Ideas</div>
+          <div class="section-subtitle">Defined-risk structures with full greeks, PoT, and days-to-50% targets</div>
+        </div>
+      </div>
+      <div class="exp-pills" id="mlPills"></div>
+      <div id="mlForExp"></div>
+    </div>
+  </div>
+
+  <!-- TAB: JOURNAL -->
+  <div class="tab-content" id="tab-journal">
+    <div class="section">
+      <div class="section-header">
+        <div>
+          <div class="section-title"><span class="num">C</span>Trade Journal</div>
+          <div class="section-subtitle">Complete log of opened and closed trades — persists across sessions</div>
+        </div>
+        <div class="controls">
+          <button class="btn btn-sm" onclick="exportTrades()">Export JSON</button>
+          <button class="btn btn-sm danger" onclick="clearTrades()">Clear All</button>
+        </div>
+      </div>
+      <div id="journalContainer"></div>
+    </div>
+  </div>
+
+  <!-- TAB: ANALYTICS -->
+  <div class="tab-content" id="tab-analytics">
+    <div class="section">
+      <div class="section-header">
+        <div>
+          <div class="section-title"><span class="num">D</span>Analytics</div>
+          <div class="section-subtitle">Portfolio breakdown, realized & unrealized P&L, by strategy/ticker/month · Italian 26% capital-gain tracker</div>
+        </div>
+        <div class="controls">
+          <label style="font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:6px">
+            Year: <select id="analyticsYear" onchange="renderAnalytics()" style="padding:4px 8px;background:var(--bg-2);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;font-family:var(--mono)"></select>
+          </label>
+        </div>
+      </div>
+      <div id="analyticsContainer"></div>
+    </div>
+  </div>
+
+  <!-- TAB: IMPORT -->
+  <div class="tab-content" id="tab-import">
+    <div class="section">
+      <div class="section-header">
+        <div>
+          <div class="section-title"><span class="num">E</span>Import Broker Statement</div>
+          <div class="section-subtitle">Drop an IBKR Activity Statement CSV — options trades will be parsed and you can review before importing</div>
+        </div>
+      </div>
+      <div id="importDrop" style="border:2px dashed var(--border);border-radius:8px;padding:40px;text-align:center;cursor:pointer;background:var(--bg-2);transition:all 0.15s">
+        <div style="font-size:40px;margin-bottom:10px">📥</div>
+        <div style="font-size:14px;color:var(--text-primary);margin-bottom:6px"><strong>Drop IBKR Activity Statement CSV here</strong></div>
+        <div style="font-size:12px;color:var(--text-secondary)">or click to select a file · accepts .csv exports from IBKR Activity Statements</div>
+        <input type="file" id="importFile" accept=".csv,text/csv" style="display:none" onchange="handleImportFile(this.files[0])">
+      </div>
+      <div id="importResult" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- Welcome -->
+  <div class="section" id="welcomeSection">
+    <div class="empty-state">
+      <div class="big">▸</div>
+      <div class="msg">
+        <strong style="color:var(--text-primary);font-size:16px;">Welcome to OptionFlow.</strong><br>
+        Type a ticker to begin.<br>
+        <span style="color:var(--text-dim);font-size:12px">Try: SOFI · AAPL · NVDA · PLTR · F · AMD · TSLA</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ========== MODALS ========== -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Settings</div>
+      <button class="modal-close" onclick="closeModal('settingsModal')">×</button>
+    </div>
+    <div class="modal-info">
+      Currently running in <strong style="color:var(--accent-amber)">DEMO MODE</strong> with synthetic data.
+      API integration hooks are ready for future wiring (Tradier, Polygon, Finnhub) but no live connection is active.
+    </div>
+    <div class="form-group">
+      <label>Tradier API Token (disabled)</label>
+      <input type="password" id="apiKeyInput" placeholder="Paste later when ready..." disabled>
+    </div>
+    <div class="modal-actions">
+      <button class="btn primary" onclick="closeModal('settingsModal')">OK</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="openTradeModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="openTradeTitle">Open Trade</div>
+      <button class="modal-close" onclick="closeModal('openTradeModal')">×</button>
+    </div>
+    <form id="openTradeForm" onsubmit="submitOpenTrade(event)">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ticker</label>
+          <input type="text" name="ticker" required style="text-transform:uppercase">
+        </div>
+        <div class="form-group">
+          <label>Strategy</label>
+          <select name="strategy" required>
+            <option value="CSP">Cash-Secured Put</option>
+            <option value="CC">Covered Call</option>
+            <option value="IC">Iron Condor</option>
+            <option value="PCS">Put Credit Spread</option>
+            <option value="CCS">Call Credit Spread</option>
+            <option value="STR">Short Strangle</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Strikes (short / long)</label>
+          <input type="text" name="strikes" placeholder="e.g. 7.5 or 7/8" required>
+        </div>
+        <div class="form-group">
+          <label>Expiry</label>
+          <input type="date" name="expiry" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Premium / Contract ($)</label>
+          <input type="number" name="premium" step="0.01" required>
+        </div>
+        <div class="form-group">
+          <label>Contracts</label>
+          <input type="number" name="contracts" value="1" min="1" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Capital at Risk ($)</label>
+          <input type="number" name="capital" step="0.01" required>
+        </div>
+        <div class="form-group">
+          <label>Delta (short leg)</label>
+          <input type="number" name="delta" step="0.01" placeholder="optional">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" onclick="closeModal('openTradeModal')">Cancel</button>
+        <button type="submit" class="btn primary">Log Trade</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="closeTradeModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Close Position</div>
+      <button class="modal-close" onclick="closeModal('closeTradeModal')">×</button>
+    </div>
+    <div class="modal-info" id="closeTradeInfo"></div>
+    <form id="closeTradeForm" onsubmit="submitCloseTrade(event)">
+      <input type="hidden" name="id">
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Contracts to Close</label>
+          <input type="number" name="closeContracts" min="1" step="1" required oninput="updateClosePreview()">
+        </div>
+        <div class="form-group">
+          <label>Close Date</label>
+          <input type="date" name="closeDate" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label style="display:flex;justify-content:space-between;align-items:center">
+          <span>Buyback Cost</span>
+          <span class="tabs-inline" style="padding:2px">
+            <button type="button" class="tab-inline active" data-mode="per" onclick="setCloseMode('per', this)">Per Contract</button>
+            <button type="button" class="tab-inline" data-mode="total" onclick="setCloseMode('total', this)">Total $</button>
+          </span>
+        </label>
+        <input type="number" name="closeAmount" step="0.01" required placeholder="0 if expired worthless" oninput="updateClosePreview()">
+      </div>
+
+      <div class="form-group">
+        <label>Outcome</label>
+        <select name="outcome" onchange="handleOutcomeChange(this.value)">
+          <option value="closed">Bought to Close</option>
+          <option value="expired">Expired Worthless</option>
+          <option value="assigned">Assigned</option>
+          <option value="rolled">Rolled</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <textarea name="notes" rows="2" placeholder="e.g. closed at 50% profit target, IV crush worked" style="width:100%;background:var(--bg-deep);border:1px solid var(--border);border-radius:6px;padding:9px 12px;color:var(--text-primary);font-family:var(--mono);font-size:13px;resize:vertical"></textarea>
+      </div>
+
+      <div class="modal-info" id="closePreview" style="border-left-color:var(--accent-green)"></div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" onclick="closeModal('closeTradeModal')">Cancel</button>
+        <button type="submit" class="btn primary">Close Trade</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========== EDIT TRADE MODAL ========== -->
+<div class="modal-overlay" id="editTradeModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit Trade</div>
+      <button class="modal-close" onclick="closeModal('editTradeModal')">×</button>
+    </div>
+    <form id="editTradeForm" onsubmit="submitEditTrade(event)">
+      <input type="hidden" name="id">
+      <div class="form-row">
+        <div class="form-group"><label>Ticker</label><input type="text" name="ticker" required style="text-transform:uppercase"></div>
+        <div class="form-group"><label>Strategy</label>
+          <select name="strategy" required>
+            <option value="CSP">Cash-Secured Put</option>
+            <option value="CC">Covered Call</option>
+            <option value="IC">Iron Condor</option>
+            <option value="PCS">Put Credit Spread</option>
+            <option value="CCS">Call Credit Spread</option>
+            <option value="STR">Short Strangle</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Strikes</label><input type="text" name="strikes" required></div>
+        <div class="form-group"><label>Expiry</label><input type="date" name="expiry" required></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Premium / Contract ($)</label><input type="number" name="premium" step="0.01" required></div>
+        <div class="form-group"><label>Contracts</label><input type="number" name="contracts" min="1" required></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Capital at Risk ($)</label><input type="number" name="capital" step="0.01" required></div>
+        <div class="form-group"><label>Open Date</label><input type="date" name="opened" required></div>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea name="notes" rows="2" style="width:100%;background:var(--bg-deep);border:1px solid var(--border);border-radius:6px;padding:9px 12px;color:var(--text-primary);font-family:var(--mono);font-size:13px;resize:vertical"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" onclick="closeModal('editTradeModal')">Cancel</button>
+        <button type="submit" class="btn primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========== ROLL SIMULATOR MODAL ========== -->
+<div class="modal-overlay" id="rollModal">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header">
+      <div class="modal-title">🔄 Roll Simulator</div>
+      <button class="modal-close" onclick="closeModal('rollModal')">×</button>
+    </div>
+    <div class="modal-info" id="rollInfo"></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;color:var(--text-secondary);letter-spacing:0.5px;margin-bottom:8px">Current Position (Buy to Close)</div>
+        <div class="modal-info" style="border-left-color:var(--accent-red);margin:0" id="rollCurrent"></div>
+      </div>
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;color:var(--text-secondary);letter-spacing:0.5px;margin-bottom:8px">New Position (Sell to Open)</div>
+        <div class="form-group" style="margin-bottom:10px">
+          <label>New Expiration</label>
+          <select id="rollNewExp" onchange="updateRollStrikes(); updateRollPreview()"></select>
+        </div>
+        <div class="form-group" style="margin-bottom:10px">
+          <label>New Strike</label>
+          <select id="rollNewStrike" onchange="updateRollPreview()"></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-info" id="rollPreview" style="border-left-color:var(--accent-blue)"></div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" onclick="closeModal('rollModal')">Cancel</button>
+      <button type="button" class="btn primary" onclick="executeRoll()">Execute Roll</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== NOTES MODAL ========== -->
+<div class="modal-overlay" id="notesModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Notes</div>
+      <button class="modal-close" onclick="closeModal('notesModal')">×</button>
+    </div>
+    <form id="notesForm" onsubmit="submitNotes(event)">
+      <input type="hidden" name="id">
+      <div id="notesContext" class="modal-info"></div>
+      <div class="form-group">
+        <textarea name="notes" rows="6" style="width:100%;background:var(--bg-deep);border:1px solid var(--border);border-radius:6px;padding:10px 12px;color:var(--text-primary);font-family:var(--mono);font-size:13px;resize:vertical"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" onclick="closeModal('notesModal')">Cancel</button>
+        <button type="submit" class="btn primary">Save Notes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+/* ============================================
+   OPTIONFLOW v2 — Application Logic
+   ============================================ */
+
+const CONFIG = {
+  minDelta: 0.10,
+  maxDelta: 0.45,
+  minMonthlyRoc: 2.0,
+  minVolume: 50,
+  minOi: 200,
+  riskFreeRate: 0.045,
+  maxDteDefault: 60,
+  maxDteRolls: 180,
+};
+
+const State = {
+  apiKey: null,
+  apiEnv: 'sandbox',
+  currentTicker: null,
+  currentData: null,
+  positions: [],
+  activeTab: 'wheel',
+  selectedCspExp: null,
+  selectedCcExp: null,
+  selectedMlExp: null,
+  chartExpanded: false,
+};
+
+// ---------- STORAGE ----------
+const Storage = {
+  load() {
+    try { State.positions = JSON.parse(localStorage.getItem('of_positions') || '[]'); }
+    catch { State.positions = []; }
+  },
+  savePositions() {
+    localStorage.setItem('of_positions', JSON.stringify(State.positions));
+  }
+};
+
+// ---------- UTILITIES ----------
+const fmt = {
+  usd: (n, dec=2) => (n < 0 ? '-$' : '$') + Math.abs(Number(n)).toLocaleString('en-US', {minimumFractionDigits: dec, maximumFractionDigits: dec}),
+  pct: (n, dec=1) => `${Number(n).toFixed(dec)}%`,
+  int: (n) => Number(n).toLocaleString('en-US'),
+  dte: (expiry) => {
+    const now = new Date(); now.setHours(0,0,0,0);
+    const exp = new Date(expiry);
+    return Math.max(0, Math.ceil((exp - now) / 86400000));
+  },
+  date: (d) => new Date(d).toISOString().slice(0, 10),
+  shortDate: (d) => new Date(d).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}),
+  mcap: (n) => n ? (n > 1e12 ? `$${(n/1e12).toFixed(2)}T` : n > 1e9 ? `$${(n/1e9).toFixed(1)}B` : `$${(n/1e6).toFixed(0)}M`) : '—',
+};
+
+function toast(msg, type='info') {
+  const t = document.createElement('div');
+  t.className = 'toast' + (type === 'error' ? ' error' : type === 'warn' ? ' warn' : '');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+function animateNumber(el, target, prefix='', suffix='', decimals=0) {
+  const duration = 500;
+  const t0 = performance.now();
+  function step(now) {
+    const p = Math.min(1, (now - t0) / duration);
+    const ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = prefix + (target * ease).toFixed(decimals) + suffix;
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ---------- BLACK-SCHOLES ----------
+function normCdf(x) {
+  const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+  const sign = x < 0 ? -1 : 1;
+  x = Math.abs(x) / Math.sqrt(2);
+  const t = 1.0 / (1.0 + p * x);
+  const y = 1.0 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+  return 0.5 * (1 + sign * y);
+}
+function normPdf(x) { return Math.exp(-x*x/2) / Math.sqrt(2*Math.PI); }
+
+function bs(S, K, T, r, sigma, type='call') {
+  if (T <= 0 || sigma <= 0) {
+    const intrinsic = type === 'call' ? Math.max(0, S-K) : Math.max(0, K-S);
+    return { price: intrinsic, delta: type === 'call' ? (S>K?1:0) : (S<K?-1:0), gamma: 0, theta: 0, vega: 0 };
+  }
+  const d1 = (Math.log(S/K) + (r + sigma*sigma/2)*T) / (sigma*Math.sqrt(T));
+  const d2 = d1 - sigma*Math.sqrt(T);
+  let price, delta;
+  if (type === 'call') {
+    price = S*normCdf(d1) - K*Math.exp(-r*T)*normCdf(d2);
+    delta = normCdf(d1);
+  } else {
+    price = K*Math.exp(-r*T)*normCdf(-d2) - S*normCdf(-d1);
+    delta = normCdf(d1) - 1;
+  }
+  const gamma = normPdf(d1) / (S*sigma*Math.sqrt(T));
+  const theta = type === 'call'
+    ? (-S*normPdf(d1)*sigma/(2*Math.sqrt(T)) - r*K*Math.exp(-r*T)*normCdf(d2)) / 365
+    : (-S*normPdf(d1)*sigma/(2*Math.sqrt(T)) + r*K*Math.exp(-r*T)*normCdf(-d2)) / 365;
+  const vega = S*normPdf(d1)*Math.sqrt(T) / 100;
+  return { price, delta, gamma, theta, vega };
+}
+
+// ---------- SYNTHETIC DATA ----------
+const TickerSeeds = {
+  SOFI: { price: 8.40, iv: 0.62, mcap: 9.1e9, high52: 11.70, low52: 6.01, sector: 'Financial Services', peRatio: 22 },
+  AAPL: { price: 228.50, iv: 0.26, mcap: 3.5e12, high52: 260.10, low52: 164.08, sector: 'Technology', peRatio: 32 },
+  NVDA: { price: 142.30, iv: 0.48, mcap: 3.5e12, high52: 153.13, low52: 75.60, sector: 'Semiconductors', peRatio: 45 },
+  PLTR: { price: 78.40, iv: 0.68, mcap: 180e9, high52: 95.20, low52: 20.00, sector: 'Software', peRatio: 180 },
+  F:    { price: 10.50, iv: 0.38, mcap: 42e9, high52: 14.85, low52: 9.20, sector: 'Auto', peRatio: 9 },
+  AMD:  { price: 125.20, iv: 0.52, mcap: 200e9, high52: 227.30, low52: 94.07, sector: 'Semiconductors', peRatio: 38 },
+  TSLA: { price: 340.00, iv: 0.58, mcap: 1.1e12, high52: 488.54, low52: 138.80, sector: 'Auto', peRatio: 75 },
+  MSFT: { price: 420.00, iv: 0.22, mcap: 3.1e12, high52: 468.35, low52: 362.90, sector: 'Technology', peRatio: 34 },
+  GOOGL:{ price: 168.00, iv: 0.28, mcap: 2.0e12, high52: 207.05, low52: 130.67, sector: 'Technology', peRatio: 25 },
+  AMZN: { price: 200.00, iv: 0.30, mcap: 2.1e12, high52: 242.52, low52: 151.61, sector: 'Retail', peRatio: 42 },
+  META: { price: 580.00, iv: 0.32, mcap: 1.4e12, high52: 638.40, low52: 400.00, sector: 'Technology', peRatio: 28 },
+  SPY:  { price: 580.00, iv: 0.15, mcap: 0, high52: 610.00, low52: 500.00, sector: 'ETF', peRatio: null },
+  QQQ:  { price: 500.00, iv: 0.19, mcap: 0, high52: 530.00, low52: 420.00, sector: 'ETF', peRatio: null },
+  NIO:  { price: 4.80, iv: 0.75, mcap: 10e9, high52: 9.57, low52: 3.62, sector: 'Auto', peRatio: null },
+  GME:  { price: 26.50, iv: 0.95, mcap: 12e9, high52: 64.83, low52: 9.95, sector: 'Retail', peRatio: 125 },
+  INTC: { price: 23.40, iv: 0.48, mcap: 100e9, high52: 46.63, low52: 18.51, sector: 'Semiconductors', peRatio: 20 },
+  BABA: { price: 95.00, iv: 0.45, mcap: 225e9, high52: 117.82, low52: 66.63, sector: 'Retail', peRatio: 14 },
+  BAC:  { price: 44.50, iv: 0.28, mcap: 340e9, high52: 48.00, low52: 33.00, sector: 'Financial', peRatio: 13 },
+};
+
+function dhash(s) { let h=0; for (let i=0;i<s.length;i++) { h=((h<<5)-h)+s.charCodeAt(i); h|=0; } return Math.abs(h); }
+function srand(seed) { let s=seed; return () => { s=(s*9301+49297)%233280; return s/233280; }; }
+
+function getTickerSeed(t) {
+  t = t.toUpperCase();
+  if (TickerSeeds[t]) return {...TickerSeeds[t], ticker: t};
+  const rnd = srand(dhash(t));
+  const tier = rnd();
+  let price, iv, mcap;
+  if (tier < 0.3) { price=5+rnd()*20; iv=0.5+rnd()*0.5; mcap=5e8+rnd()*5e9; }
+  else if (tier < 0.7) { price=30+rnd()*120; iv=0.25+rnd()*0.35; mcap=10e9+rnd()*100e9; }
+  else { price=150+rnd()*300; iv=0.2+rnd()*0.3; mcap=100e9+rnd()*500e9; }
+  return {
+    ticker: t,
+    price: Math.round(price*100)/100,
+    iv, mcap,
+    high52: price*(1.2+rnd()*0.3),
+    low52: price*(0.65+rnd()*0.15),
+    sector: 'Unknown',
+    peRatio: 15 + rnd()*30,
+  };
+}
+
+function generateQuote(ticker) {
+  const seed = getTickerSeed(ticker);
+  const rnd = srand(dhash(ticker + new Date().toDateString()));
+  const wobble = (rnd()-0.5) * 0.04;
+  const price = Math.round(seed.price * (1+wobble) * 100) / 100;
+  const changePct = wobble * 100;
+  const change = Math.round((price - seed.price) * 100) / 100;
+  const ivRank = Math.round(rnd() * 100);
+  const ivPct = Math.max(0, Math.min(100, ivRank + (rnd()-0.5)*20));
+  return {
+    ticker: seed.ticker,
+    last: price, change, changePct,
+    iv: seed.iv, ivRank, ivPercentile: Math.round(ivPct),
+    high52: Math.round(seed.high52*100)/100,
+    low52: Math.round(seed.low52*100)/100,
+    mcap: seed.mcap,
+    sector: seed.sector,
+    peRatio: seed.peRatio,
+    synthetic: true,
+  };
+}
+
+function generateFundamentals(quote) {
+  const rnd = srand(dhash(quote.ticker + 'fund'));
+  const daysToEarnings = Math.round(5 + rnd() * 75);
+  const earningsDate = new Date();
+  earningsDate.setDate(earningsDate.getDate() + daysToEarnings);
+  const session = rnd() > 0.5 ? 'AMC' : 'BMO';
+  const eps = quote.peRatio ? (quote.last / quote.peRatio / 4) : (0.2 + rnd() * 1.5);
+  const epsEst = Math.round(eps * 100) / 100;
+  const epsBeatRate = Math.round(50 + rnd() * 40); // historical beat %
+  const revEst = quote.mcap ? (quote.mcap * (0.01 + rnd() * 0.04)) : (100e6 + rnd() * 5e9);
+  const revGrowth = Math.round((5 + rnd() * 35) * 10) / 10;
+  // Analyst
+  const ratingScore = 1 + rnd() * 4;
+  const ratingLabel = ratingScore < 1.75 ? 'Strong Buy' : ratingScore < 2.5 ? 'Buy' : ratingScore < 3.5 ? 'Hold' : ratingScore < 4.25 ? 'Sell' : 'Strong Sell';
+  const priceTarget = Math.round(quote.last * (0.85 + rnd() * 0.4) * 100) / 100;
+  const ptUpside = Math.round(((priceTarget - quote.last) / quote.last) * 1000) / 10;
+  const analystCount = Math.round(8 + rnd() * 30);
+  return {
+    earningsDate, earningsSession: session, daysToEarnings,
+    epsEst, epsBeatRate,
+    revEst, revGrowth,
+    rating: ratingLabel, ratingScore: Math.round(ratingScore * 10) / 10,
+    priceTarget, ptUpside, analystCount,
+  };
+}
+
+function generatePriceHistory(quote, days = 180) {
+  const rnd = srand(dhash(quote.ticker + 'hist'));
+  const sigma = quote.iv / Math.sqrt(252);
+  const mu = 0.0002;
+  let p = quote.low52 + (quote.high52 - quote.low52) * (0.3 + rnd() * 0.4);
+  const series = [];
+  const today = new Date(); today.setHours(0,0,0,0);
+  for (let i = days; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    // Brownian
+    const z = (rnd() - 0.5) * 2 * Math.sqrt(3); // approx normal
+    p = p * Math.exp((mu - sigma*sigma/2) + sigma * z);
+    p = Math.max(quote.low52 * 0.95, Math.min(quote.high52 * 1.05, p));
+    // Volume
+    const vol = Math.round((1e6 + rnd() * 5e6) * (0.5 + Math.abs(z) / 2));
+    series.push({ date: fmt.date(d), price: Math.round(p * 100) / 100, volume: vol });
+  }
+  // Force last point to current price
+  series[series.length - 1].price = quote.last;
+  return series;
+}
+
+function generateChain(quote) {
+  const S = quote.last;
+  const baseIv = quote.iv;
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // Weeklies: every Friday for next ~9 weeks
+  const weeklies = [];
+  const friday = new Date(today);
+  const day = friday.getDay();
+  friday.setDate(friday.getDate() + ((5 - day + 7) % 7 || 7)); // next Friday
+  for (let i = 0; i < 9; i++) {
+    const d = new Date(friday);
+    d.setDate(d.getDate() + i * 7);
+    weeklies.push({ date: d, type: 'weekly' });
+  }
+
+  // Monthlies: third Friday of each month for next 6 months (excluding those already in weeklies)
+  const monthlies = [];
+  for (let m = 0; m <= 6; m++) {
+    const d = new Date(today.getFullYear(), today.getMonth() + m, 1);
+    // Third Friday
+    const firstDay = d.getDay();
+    const offset = (5 - firstDay + 7) % 7;
+    d.setDate(1 + offset + 14);
+    if (d > today && !weeklies.some(w => fmt.date(w.date) === fmt.date(d))) {
+      monthlies.push({ date: d, type: 'monthly' });
+    }
+  }
+
+  let allExp = [...weeklies, ...monthlies]
+    .sort((a, b) => a.date - b.date)
+    .filter(e => fmt.dte(e.date) > 0 && fmt.dte(e.date) <= CONFIG.maxDteRolls);
+
+  // Strike step
+  const strikeStep = S < 10 ? 0.5 : S < 25 ? 1 : S < 50 ? 1 : S < 100 ? 2.5 : S < 250 ? 5 : 10;
+  const strikes = [];
+  const n = 14;
+  for (let i = -n; i <= n; i++) {
+    let k = Math.round((S + i * strikeStep) / strikeStep) * strikeStep;
+    k = Math.round(k * 100) / 100;
+    if (k > 0) strikes.push(k);
+  }
+
+  const rnd = srand(dhash(quote.ticker + 'chain'));
+  const chain = [];
+
+  for (const e of allExp) {
+    const dte = fmt.dte(e.date);
+    if (dte <= 0) continue;
+    const T = dte / 365;
+    const termIv = baseIv * (1 + 0.15 * (1 - Math.min(1, dte / 45)));
+
+    for (const K of strikes) {
+      const moneyness = (K - S) / S;
+      const smileAdj = 1 + 0.3 * Math.abs(moneyness);
+      const iv = Math.max(0.05, termIv * smileAdj);
+      const cg = bs(S, K, T, CONFIG.riskFreeRate, iv, 'call');
+      const pg = bs(S, K, T, CONFIG.riskFreeRate, iv, 'put');
+      const mkPrice = (g) => {
+        const p = Math.max(0.01, g.price);
+        const spread = Math.max(0.02, p * 0.04);
+        const bid = Math.max(0.01, Math.round((p - spread/2)*100)/100);
+        const ask = Math.round((p + spread/2)*100)/100;
+        return { bid, ask, mid: Math.round((bid+ask)/2*100)/100 };
+      };
+      const cp = mkPrice(cg), pp = mkPrice(pg);
+      const atmDist = Math.abs(K - S) / S;
+      const vScale = Math.exp(-atmDist * 8) * (e.type === 'weekly' ? 0.8 : 1);
+      const baseVol = Math.round((400 + rnd() * 2200) * vScale);
+      const baseOi = Math.round((900 + rnd() * 5500) * vScale);
+
+      chain.push({ underlying: quote.ticker, expiration: fmt.date(e.date), expType: e.type, dte, strike: K, type: 'call',
+        bid: cp.bid, ask: cp.ask, last: cp.mid, volume: Math.max(0, baseVol), open_interest: Math.max(0, baseOi),
+        iv, delta: cg.delta, gamma: cg.gamma, theta: cg.theta, vega: cg.vega });
+      chain.push({ underlying: quote.ticker, expiration: fmt.date(e.date), expType: e.type, dte, strike: K, type: 'put',
+        bid: pp.bid, ask: pp.ask, last: pp.mid, volume: Math.max(0, baseVol), open_interest: Math.max(0, baseOi),
+        iv, delta: pg.delta, gamma: pg.gamma, theta: pg.theta, vega: pg.vega });
+    }
+  }
+  return chain;
+}
+
+// ---------- TICKER LOAD ----------
+async function loadTicker(ticker) {
+  ticker = ticker.trim().toUpperCase();
+  if (!ticker) return;
+  State.currentTicker = ticker;
+
+  document.getElementById('welcomeSection').style.display = 'none';
+  document.getElementById('snapshotWrap').style.display = 'block';
+  document.getElementById('mainTabs').style.display = 'flex';
+  document.getElementById('cspSection').style.display = 'block';
+  document.getElementById('ccSection').style.display = 'block';
+  document.getElementById('multilegSection').style.display = 'block';
+
+  const quote = generateQuote(ticker);
+  const chain = generateChain(quote);
+  const fund = generateFundamentals(quote);
+  const history = generatePriceHistory(quote);
+
+  State.currentData = { quote, chain, fundamentals: fund, history };
+  State.selectedCspExp = null;
+  State.selectedCcExp = null;
+  State.selectedMlExp = null;
+
+  renderSnapshot();
+  buildCSPPills();
+  buildCCPills();
+  buildMLPills();
+}
+
+// ---------- SNAPSHOT ----------
+function renderSnapshot() {
+  const { quote, fundamentals, history } = State.currentData;
+  const q = quote, f = fundamentals;
+  const changeCls = q.change >= 0 ? 'g' : 'r';
+  const ivCls = q.ivRank < 33 ? 'iv-low' : q.ivRank < 66 ? 'iv-mid' : 'iv-high';
+  const ivTextCls = q.ivRank < 33 ? 'g' : q.ivRank < 66 ? 'a' : 'r';
+  const ivLabel = q.ivRank < 33 ? 'LOW · cheap prem' : q.ivRank < 66 ? 'MID' : 'HIGH · rich prem';
+
+  const ptCls = f.ptUpside >= 0 ? 'g' : 'r';
+  const earningsCls = f.daysToEarnings <= 14 ? 'r' : f.daysToEarnings <= 30 ? 'a' : 'g';
+
+  document.getElementById('snapTop').innerHTML = `
+    <div class="snap-main">
+      <div>
+        <div class="snap-main-top">
+          <div class="snap-ticker">${q.ticker}</div>
+          <button class="btn btn-sm ghost" onclick="toggleChart()">📈 ${State.chartExpanded ? 'Hide' : 'Chart'}</button>
+        </div>
+        <div class="snap-price ${changeCls}">${fmt.usd(q.last)}</div>
+        <div class="snap-change ${changeCls}">${q.change >= 0 ? '▲' : '▼'} ${fmt.usd(Math.abs(q.change))} (${fmt.pct(q.changePct)})</div>
+      </div>
+      <div class="snap-spark">${drawSparkline(history)}</div>
+    </div>
+    <div class="snap-stat">
+      <div class="label">IV Rank</div>
+      <div class="value ${ivTextCls}">${q.ivRank}</div>
+      <div class="iv-bar"><div class="iv-bar-fill ${ivCls}" style="width:${q.ivRank}%"></div></div>
+      <div class="sub">${ivLabel}</div>
+    </div>
+    <div class="snap-stat">
+      <div class="label">IV Percentile</div>
+      <div class="value">${q.ivPercentile}%</div>
+      <div class="sub">30d IV: ${(q.iv*100).toFixed(1)}%</div>
+    </div>
+    <div class="snap-stat">
+      <div class="label">52W Range</div>
+      <div class="value" style="font-size:13px">${fmt.usd(q.low52)} – ${fmt.usd(q.high52)}</div>
+      <div class="iv-bar"><div class="iv-bar-fill" style="background:var(--accent-blue); width:${Math.round((q.last-q.low52)/(q.high52-q.low52)*100)}%"></div></div>
+      <div class="sub">Pos: ${Math.round((q.last-q.low52)/(q.high52-q.low52)*100)}%</div>
+    </div>
+    <div class="snap-stat">
+      <div class="label">Market Cap</div>
+      <div class="value" style="font-size:14px">${fmt.mcap(q.mcap)}</div>
+      <div class="sub">${q.sector || '—'}${q.peRatio ? ' · P/E ' + q.peRatio.toFixed(1) : ''}</div>
+    </div>
+    <div class="snap-stat">
+      <div class="label">Analyst Target</div>
+      <div class="value ${ptCls}">${fmt.usd(f.priceTarget)}</div>
+      <div class="sub">${f.ptUpside >= 0 ? '+' : ''}${f.ptUpside.toFixed(1)}% · ${f.analystCount} analysts</div>
+    </div>
+  `;
+
+  document.getElementById('snapBottom').innerHTML = `
+    <div class="snap-info">
+      <div class="label">Next Earnings <span class="tag">${f.earningsSession}</span></div>
+      <div class="primary ${earningsCls}">${new Date(f.earningsDate).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'})}</div>
+      <div class="row"><span>Days away</span><span class="v ${earningsCls}">${f.daysToEarnings}d</span></div>
+      <div class="row"><span>Historical beat rate</span><span class="v">${f.epsBeatRate}%</span></div>
+    </div>
+    <div class="snap-info">
+      <div class="label">EPS Estimate <span class="tag">CONSENSUS</span></div>
+      <div class="primary">${fmt.usd(f.epsEst)}</div>
+      <div class="row"><span>Revenue est.</span><span class="v">${fmt.mcap(f.revEst)}</span></div>
+      <div class="row"><span>YoY rev growth</span><span class="v g">+${f.revGrowth}%</span></div>
+    </div>
+    <div class="snap-info">
+      <div class="label">Analyst Consensus <span class="tag">${f.rating.toUpperCase()}</span></div>
+      <div class="primary">${f.ratingScore} / 5</div>
+      <div class="row"><span>Price target</span><span class="v">${fmt.usd(f.priceTarget)}</span></div>
+      <div class="row"><span>Upside</span><span class="v ${ptCls}">${f.ptUpside >= 0 ? '+' : ''}${f.ptUpside.toFixed(1)}%</span></div>
+    </div>
+  `;
+
+  if (State.chartExpanded) {
+    renderExpandedChart();
+  }
+}
+
+function drawSparkline(history) {
+  const last30 = history.slice(-30);
+  const w = 100, h = 30;
+  const prices = last30.map(p => p.price);
+  const min = Math.min(...prices), max = Math.max(...prices);
+  const range = max - min || 1;
+  const pts = last30.map((p, i) => ({
+    x: (i / (last30.length - 1)) * w,
+    y: h - ((p.price - min) / range) * h,
+  }));
+  const path = pts.map((p, i) => (i === 0 ? 'M' : 'L') + `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const last = last30[last30.length - 1].price;
+  const first = last30[0].price;
+  const cls = last >= first ? 'var(--accent-green)' : 'var(--accent-red)';
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="100%" preserveAspectRatio="none">
+    <path d="${path}" fill="none" stroke="${cls}" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+  </svg>`;
+}
+
+function toggleChart() {
+  State.chartExpanded = !State.chartExpanded;
+  const el = document.getElementById('chartExpanded');
+  if (State.chartExpanded) {
+    el.classList.add('active');
+    renderExpandedChart();
+  } else {
+    el.classList.remove('active');
+  }
+  renderSnapshot();
+}
+
+function renderExpandedChart() {
+  const { quote, history } = State.currentData;
+  const el = document.getElementById('chartExpanded');
+  const w = 800, h = 280, padL = 50, padR = 20, padT = 20, padB = 80;
+  const chartH = h - padT - padB - 40; // reserve volume area
+  const volH = 30;
+
+  const prices = history.map(p => p.price);
+  const min = Math.min(...prices) * 0.98;
+  const max = Math.max(...prices) * 1.02;
+  const range = max - min;
+  const volumes = history.map(p => p.volume);
+  const volMax = Math.max(...volumes);
+
+  const xAt = i => padL + (i / (history.length - 1)) * (w - padL - padR);
+  const yAt = p => padT + ((max - p) / range) * chartH;
+
+  const pricePath = history.map((p, i) => (i === 0 ? 'M' : 'L') + `${xAt(i).toFixed(1)},${yAt(p.price).toFixed(1)}`).join(' ');
+  const areaPath = pricePath + ` L${xAt(history.length-1).toFixed(1)},${(padT+chartH).toFixed(1)} L${xAt(0).toFixed(1)},${(padT+chartH).toFixed(1)} Z`;
+
+  // 52w high/low lines
+  const hiY = yAt(quote.high52);
+  const loY = yAt(quote.low52);
+
+  // Strike overlays from open positions
+  const myPositions = State.positions.filter(p => !p.closed && p.ticker === quote.ticker);
+  const strikeLines = myPositions.map(p => {
+    const short = Number(String(p.strikes).split('/')[0]);
+    if (!short || short < min || short > max) return '';
+    const y = yAt(short);
+    const color = p.strategy === 'CSP' ? 'var(--accent-green)' : p.strategy === 'CC' ? 'var(--accent-amber)' : 'var(--accent-purple)';
+    return `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${(w-padR).toFixed(1)}" y2="${y.toFixed(1)}" stroke="${color}" stroke-dasharray="4 3" stroke-width="1" opacity="0.7"/>
+            <text x="${(w-padR-6).toFixed(1)}" y="${(y-3).toFixed(1)}" text-anchor="end" font-family="JetBrains Mono" font-size="9" fill="${color}">${p.strategy} ${fmt.usd(short)}</text>`;
+  }).join('');
+
+  // Volume bars
+  const volBars = history.map((p, i) => {
+    const x = xAt(i);
+    const bw = Math.max(1, (w - padL - padR) / history.length - 1);
+    const bh = (p.volume / volMax) * volH;
+    const bY = padT + chartH + 10 + (volH - bh);
+    const prev = i > 0 ? history[i-1].price : p.price;
+    const c = p.price >= prev ? 'rgba(0,255,136,0.4)' : 'rgba(255,59,92,0.4)';
+    return `<rect x="${(x-bw/2).toFixed(1)}" y="${bY.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="${c}"/>`;
+  }).join('');
+
+  // Y axis labels (price)
+  const yTicks = [];
+  for (let i = 0; i <= 4; i++) {
+    const p = min + (range * i / 4);
+    const y = yAt(p);
+    yTicks.push(`<text x="${padL-6}" y="${(y+3).toFixed(1)}" text-anchor="end" font-family="JetBrains Mono" font-size="9" fill="#5a5a68">${fmt.usd(p)}</text>
+                 <line x1="${padL}" y1="${y.toFixed(1)}" x2="${w-padR}" y2="${y.toFixed(1)}" stroke="#2a2a33" stroke-width="0.5"/>`);
+  }
+
+  // X axis labels (dates, every ~30 days)
+  const xTicks = [];
+  for (let i = 0; i < history.length; i += 30) {
+    const x = xAt(i);
+    xTicks.push(`<text x="${x.toFixed(1)}" y="${(padT+chartH+volH+28).toFixed(1)}" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#5a5a68">${fmt.shortDate(history[i].date)}</text>`);
+  }
+
+  el.innerHTML = `
+    <div class="chart-header">
+      <div class="chart-title">${quote.ticker} · 180-Day Chart</div>
+      <div class="chart-legend">
+        <span><span class="swatch" style="background:var(--accent-green)"></span>Price</span>
+        <span><span class="swatch" style="background:var(--accent-blue);border-top:1px dashed var(--accent-blue)"></span>52W H/L</span>
+        ${myPositions.length ? '<span><span class="swatch" style="background:var(--accent-amber)"></span>Your strikes</span>' : ''}
+      </div>
+    </div>
+    <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#00ff88" stop-opacity="0.3"/>
+          <stop offset="100%" stop-color="#00ff88" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      ${yTicks.join('')}
+      <line x1="${padL}" y1="${hiY.toFixed(1)}" x2="${w-padR}" y2="${hiY.toFixed(1)}" stroke="var(--accent-blue)" stroke-dasharray="2 3" opacity="0.5"/>
+      <line x1="${padL}" y1="${loY.toFixed(1)}" x2="${w-padR}" y2="${loY.toFixed(1)}" stroke="var(--accent-blue)" stroke-dasharray="2 3" opacity="0.5"/>
+      <text x="${(w-padR-4).toFixed(1)}" y="${(hiY-3).toFixed(1)}" text-anchor="end" font-family="JetBrains Mono" font-size="9" fill="var(--accent-blue)">52W HIGH ${fmt.usd(quote.high52)}</text>
+      <text x="${(w-padR-4).toFixed(1)}" y="${(loY+11).toFixed(1)}" text-anchor="end" font-family="JetBrains Mono" font-size="9" fill="var(--accent-blue)">52W LOW ${fmt.usd(quote.low52)}</text>
+      <path d="${areaPath}" fill="url(#priceGrad)"/>
+      <path d="${pricePath}" fill="none" stroke="var(--accent-green)" stroke-width="1.5"/>
+      ${strikeLines}
+      ${volBars}
+      ${xTicks.join('')}
+      <text x="${padL-6}" y="${(padT+chartH+25).toFixed(1)}" text-anchor="end" font-family="JetBrains Mono" font-size="8" fill="#5a5a68">VOLUME</text>
+    </svg>
+  `;
+}
+
+// ---------- EXPIRATION PILLS ----------
+function buildExpPills(target, selectedRef, onSelect, showRolls) {
+  if (!State.currentData) return;
+  const { chain } = State.currentData;
+  const maxDte = showRolls ? CONFIG.maxDteRolls : CONFIG.maxDteDefault;
+  const expMap = new Map();
+  for (const o of chain) {
+    if (o.dte > maxDte) continue;
+    if (!expMap.has(o.expiration)) expMap.set(o.expiration, { date: o.expiration, dte: o.dte, type: o.expType });
+  }
+  const exps = [...expMap.values()].sort((a, b) => a.dte - b.dte);
+  if (!State[selectedRef] || !exps.some(e => e.date === State[selectedRef])) {
+    // Default: pick first expiry with DTE >= 21, else first
+    const def = exps.find(e => e.dte >= 21) || exps[0];
+    if (def) State[selectedRef] = def.date;
+  }
+  target.innerHTML = exps.map(e => {
+    const cls = (State[selectedRef] === e.date ? 'active ' : '') + e.type + (e.dte > CONFIG.maxDteDefault ? ' leap' : '');
+    const tag = e.type === 'weekly' ? 'W' : e.type === 'monthly' ? 'M' : '';
+    return `<button class="exp-pill ${cls}" onclick="${onSelect}('${e.date}')">
+      <div class="date">${fmt.shortDate(e.date)}</div>
+      <div class="dte">${e.dte}d</div>
+      <div class="exp-pill-tag">${tag}</div>
+    </button>`;
+  }).join('');
+}
+
+// ---------- CSP ----------
+function buildCSPPills() {
+  const showRolls = document.getElementById('cspShowRolls').checked;
+  buildExpPills(document.getElementById('cspPills'), 'selectedCspExp', 'selectCspExp', showRolls);
+  renderCSPForExp();
+}
+
+function selectCspExp(date) {
+  State.selectedCspExp = date;
+  buildCSPPills();
+}
+
+function renderCSPForExp() {
+  const wrap = document.getElementById('cspForExp');
+  if (!State.currentData || !State.selectedCspExp) { wrap.innerHTML = ''; return; }
+  const { quote, chain } = State.currentData;
+  const minRoc = parseFloat(document.getElementById('cspMinRoc').value) || 2.0;
+  const exp = State.selectedCspExp;
+  const meta = chain.find(o => o.expiration === exp);
+
+  const puts = chain
+    .filter(o => o.expiration === exp && o.type === 'put')
+    .filter(o => o.strike < quote.last)
+    .filter(o => Math.abs(o.delta) >= CONFIG.minDelta && Math.abs(o.delta) <= CONFIG.maxDelta)
+    .filter(o => o.volume >= CONFIG.minVolume || o.open_interest >= CONFIG.minOi)
+    .map(o => {
+      const mid = o.bid > 0 ? (o.bid + o.ask) / 2 : o.last;
+      const roc = (mid / o.strike) * (30 / o.dte) * 100;
+      const annRoc = (mid / o.strike) * (365 / o.dte) * 100;
+      const pop = (1 - Math.abs(o.delta)) * 100;
+      const pctOtm = ((quote.last - o.strike) / quote.last) * 100;
+      return { ...o, mid, roc, annRoc, pop, pctOtm, breakeven: o.strike - mid };
+    })
+    .filter(o => o.roc >= minRoc)
+    .sort((a, b) => b.roc - a.roc);
+
+  const suggestionsHtml = renderSuggestionCards(puts, 'CSP', quote);
+  const tableHtml = renderCSPTable(puts);
+  wrap.innerHTML = `
+    <div class="subsection">
+      <div class="subsection-header">
+        <div class="subsection-title">${fmt.shortDate(exp)} · ${meta.dte} DTE <span class="tag">${meta.expType.toUpperCase()}</span></div>
+        <div class="dim" style="font-family:var(--mono);font-size:11px">${puts.length} strikes pass filters</div>
+      </div>
+      ${suggestionsHtml}
+      ${tableHtml}
+    </div>
+  `;
+}
+
+function renderSuggestionCards(options, kind, quote) {
+  if (options.length === 0) {
+    return `<div class="empty-state" style="padding:20px"><div class="msg dim">No strikes matching your filters for this expiry. Try lowering Min RoC.</div></div>`;
+  }
+  const findNear = (td) => options.reduce((b, o) => {
+    const d = Math.abs(Math.abs(o.delta) - td);
+    if (!b || d < b.d) return { o, d };
+    return b;
+  }, null)?.o;
+  const c = findNear(0.17);
+  const m = findNear(0.27);
+  const a = findNear(0.37);
+  const basis = kind === 'CC' ? (parseFloat(document.getElementById('ccBasis').value) || quote.last) : null;
+  const mk = (tier, label, icon, o, rationale) => {
+    if (!o) return '';
+    const data = JSON.stringify(o).replace(/'/g,"&#39;");
+    const fn = kind === 'CSP' ? 'openTradeFromCSP' : 'openTradeFromCC';
+    const args = kind === 'CSP' ? data : `${data}, ${basis}`;
+    const prem = kind === 'CSP' ? o.roc : o.yieldMo;
+    const premLabel = kind === 'CSP' ? 'RoC/mo' : 'Yield/mo';
+    const be = kind === 'CSP' ? `<div class="sug-stat"><span class="k">Breakeven</span><span class="v">${fmt.usd(o.breakeven)}</span></div>` :
+                               `<div class="sug-stat"><span class="k">If Called</span><span class="v">${fmt.usd(o.callAway)}</span></div>`;
+    return `
+      <div class="sug-card ${tier}">
+        <div class="sug-tier">${icon} ${label}</div>
+        <div class="sug-headline">${fmt.usd(o.strike)} ${kind === 'CSP' ? 'Put' : 'Call'} · ${fmt.shortDate(o.expiration)}</div>
+        <div class="sug-sub">${o.dte} DTE · Δ ${o.delta.toFixed(3)} · IV ${(o.iv*100).toFixed(1)}%</div>
+        <div class="sug-stats">
+          <div class="sug-stat"><span class="k">Mid</span><span class="v g">${fmt.usd(o.mid)}</span></div>
+          <div class="sug-stat"><span class="k">${premLabel}</span><span class="v g">${prem.toFixed(2)}%</span></div>
+          <div class="sug-stat"><span class="k">Ann.</span><span class="v">${(kind === 'CSP' ? o.annRoc : o.annYield).toFixed(1)}%</span></div>
+          <div class="sug-stat"><span class="k">PoP</span><span class="v">${o.pop.toFixed(0)}%</span></div>
+          ${be}
+          <div class="sug-stat"><span class="k">% OTM</span><span class="v">${o.pctOtm.toFixed(1)}%</span></div>
+        </div>
+        <div class="sug-rationale">${rationale}</div>
+        <div class="sug-actions">
+          <button class="btn btn-sm primary" onclick='${fn}(${args})'>Open Trade</button>
+        </div>
+      </div>`;
+  };
+
+  let html;
+  if (kind === 'CSP') {
+    html = [
+      mk('conservative', 'Conservative', '🟢', c, `Low-delta (Δ ${c?.delta.toFixed(2)}), ~${c?.pop.toFixed(0)}% PoP. Preserve capital — collect ${c?.roc.toFixed(2)}%/mo without courting assignment.`),
+      mk('moderate', 'Moderate', '🟡', m, `Balanced entry (Δ ${m?.delta.toFixed(2)}). ${m?.roc.toFixed(2)}%/mo at ${m?.pop.toFixed(0)}% PoP. Wouldn't mind owning at ${fmt.usd(m?.breakeven || 0)}.`),
+      mk('aggressive', 'Aggressive', '🔴', a, `High-premium (Δ ${a?.delta.toFixed(2)}). ${a?.roc.toFixed(2)}%/mo, ${a?.pop.toFixed(0)}% PoP. Only if you want assignment at ${fmt.usd(a?.breakeven || 0)}.`),
+    ].join('');
+  } else {
+    html = [
+      mk('conservative', 'Conservative', '🟢', c, `Low Δ ${c?.delta.toFixed(2)} — maximize chance of keeping shares. ${c?.yieldMo.toFixed(2)}%/mo, ${c?.pop.toFixed(0)}% PoP to not get called.`),
+      mk('moderate', 'Moderate', '🟡', m, `Balanced Δ ${m?.delta.toFixed(2)}. ${m?.yieldMo.toFixed(2)}%/mo. Called-away total: ${fmt.usd(m?.callAway || 0)}.`),
+      mk('aggressive', 'Aggressive', '🔴', a, `High-premium, closer to ATM (Δ ${a?.delta.toFixed(2)}). ${a?.yieldMo.toFixed(2)}%/mo but higher chance of capped upside.`),
+    ].join('');
+  }
+  return `<div class="suggestions">${html}</div>`;
+}
+
+function renderCSPTable(puts) {
+  if (puts.length === 0) return '';
+  const rows = puts.slice(0, 25).map(o => {
+    const popCls = o.pop >= 80 ? 'g' : o.pop >= 70 ? 'a' : 'r';
+    return `<tr>
+      <td><strong>${fmt.usd(o.strike)}</strong></td>
+      <td class="right">${o.delta.toFixed(3)}</td>
+      <td class="right">${fmt.usd(o.bid)} / ${fmt.usd(o.ask)}</td>
+      <td class="right g"><strong>${fmt.usd(o.mid)}</strong></td>
+      <td class="right">${o.pctOtm.toFixed(1)}%</td>
+      <td class="right g">${o.roc.toFixed(2)}%</td>
+      <td class="right">${o.annRoc.toFixed(1)}%</td>
+      <td class="right ${popCls}">${o.pop.toFixed(0)}%</td>
+      <td class="right">${fmt.int(o.volume)}</td>
+      <td class="right">${fmt.int(o.open_interest)}</td>
+      <td class="right">${(o.iv*100).toFixed(1)}%</td>
+      <td class="center"><button class="btn btn-sm primary" onclick='openTradeFromCSP(${JSON.stringify(o).replace(/'/g,"&#39;")})'>Open</button></td>
+    </tr>`;
+  }).join('');
+  return `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>Strike</th><th class="right">Delta</th><th class="right">Bid/Ask</th><th class="right">Mid</th>
+      <th class="right">% OTM</th><th class="right">RoC/mo</th><th class="right">Ann.</th><th class="right">PoP</th>
+      <th class="right">Vol</th><th class="right">OI</th><th class="right">IV</th><th class="center">Action</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+// ---------- CC ----------
+function buildCCPills() {
+  const showRolls = document.getElementById('ccShowRolls').checked;
+  buildExpPills(document.getElementById('ccPills'), 'selectedCcExp', 'selectCcExp', showRolls);
+  renderCCForExp();
+}
+
+function selectCcExp(date) {
+  State.selectedCcExp = date;
+  buildCCPills();
+}
+
+function renderCCForExp() {
+  const wrap = document.getElementById('ccForExp');
+  if (!State.currentData || !State.selectedCcExp) { wrap.innerHTML = ''; return; }
+  const { quote, chain } = State.currentData;
+  const basis = parseFloat(document.getElementById('ccBasis').value) || quote.last;
+  const exp = State.selectedCcExp;
+  const meta = chain.find(o => o.expiration === exp);
+
+  const calls = chain
+    .filter(o => o.expiration === exp && o.type === 'call')
+    .filter(o => o.strike > quote.last)
+    .filter(o => Math.abs(o.delta) >= CONFIG.minDelta && Math.abs(o.delta) <= CONFIG.maxDelta)
+    .filter(o => o.volume >= CONFIG.minVolume || o.open_interest >= CONFIG.minOi)
+    .map(o => {
+      const mid = o.bid > 0 ? (o.bid + o.ask) / 2 : o.last;
+      const yieldMo = (mid / basis) * (30 / o.dte) * 100;
+      const annYield = (mid / basis) * (365 / o.dte) * 100;
+      const pop = (1 - Math.abs(o.delta)) * 100;
+      const pctOtm = ((o.strike - quote.last) / quote.last) * 100;
+      const callAway = o.strike - basis + mid;
+      return { ...o, mid, yieldMo, annYield, pop, pctOtm, callAway };
+    })
+    .filter(o => o.yieldMo >= 0.5)
+    .sort((a, b) => b.yieldMo - a.yieldMo);
+
+  const suggestionsHtml = renderSuggestionCards(calls, 'CC', quote);
+  const tableHtml = renderCCTable(calls, basis);
+  wrap.innerHTML = `
+    <div class="subsection">
+      <div class="subsection-header">
+        <div class="subsection-title">${fmt.shortDate(exp)} · ${meta.dte} DTE <span class="tag">${meta.expType.toUpperCase()}</span> <span class="tag">Basis ${fmt.usd(basis)}</span></div>
+        <div class="dim" style="font-family:var(--mono);font-size:11px">${calls.length} strikes pass filters</div>
+      </div>
+      ${suggestionsHtml}
+      ${tableHtml}
+    </div>
+  `;
+}
+
+function renderCCTable(calls, basis) {
+  if (calls.length === 0) return '';
+  const rows = calls.slice(0, 25).map(o => {
+    const popCls = o.pop >= 80 ? 'g' : o.pop >= 70 ? 'a' : 'r';
+    return `<tr>
+      <td><strong>${fmt.usd(o.strike)}</strong></td>
+      <td class="right">${o.delta.toFixed(3)}</td>
+      <td class="right">${fmt.usd(o.bid)} / ${fmt.usd(o.ask)}</td>
+      <td class="right g"><strong>${fmt.usd(o.mid)}</strong></td>
+      <td class="right">${o.pctOtm.toFixed(1)}%</td>
+      <td class="right g">${o.yieldMo.toFixed(2)}%</td>
+      <td class="right">${o.annYield.toFixed(1)}%</td>
+      <td class="right ${popCls}">${o.pop.toFixed(0)}%</td>
+      <td class="right">${fmt.int(o.volume)}</td>
+      <td class="right">${fmt.int(o.open_interest)}</td>
+      <td class="right">${(o.iv*100).toFixed(1)}%</td>
+      <td class="center"><button class="btn btn-sm primary" onclick='openTradeFromCC(${JSON.stringify(o).replace(/'/g,"&#39;")}, ${basis})'>Open</button></td>
+    </tr>`;
+  }).join('');
+  return `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>Strike</th><th class="right">Delta</th><th class="right">Bid/Ask</th><th class="right">Mid</th>
+      <th class="right">% OTM</th><th class="right">Yield/mo</th><th class="right">Ann.</th><th class="right">PoP</th>
+      <th class="right">Vol</th><th class="right">OI</th><th class="right">IV</th><th class="center">Action</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+// ---------- MULTI-LEG ----------
+function buildMLPills() {
+  buildExpPills(document.getElementById('mlPills'), 'selectedMlExp', 'selectMlExp', false);
+  renderMLForExp();
+}
+
+function selectMlExp(date) {
+  State.selectedMlExp = date;
+  buildMLPills();
+}
+
+function renderMLForExp() {
+  const wrap = document.getElementById('mlForExp');
+  if (!State.currentData || !State.selectedMlExp) { wrap.innerHTML = ''; return; }
+  const { quote, chain } = State.currentData;
+  const exp = State.selectedMlExp;
+  const atTerm = chain.filter(o => o.expiration === exp);
+  const meta = atTerm[0];
+  const S = quote.last;
+
+  const puts = atTerm.filter(o => o.type === 'put').sort((a,b) => b.strike - a.strike);
+  const calls = atTerm.filter(o => o.type === 'call').sort((a,b) => a.strike - b.strike);
+  const nearD = (arr, val) => arr.reduce((b, o) => Math.abs(o.delta - val) < Math.abs(b.delta - val) ? o : b, arr[0]);
+
+  // IRON CONDOR
+  const ic = (() => {
+    const sp = nearD(puts, -0.15), sc = nearD(calls, 0.15);
+    if (!sp || !sc) return null;
+    const lp = puts.find(p => p.strike < sp.strike) || puts[puts.length-1];
+    const lc = calls.find(c => c.strike > sc.strike) || calls[calls.length-1];
+    if (!lp || !lc) return null;
+    const credit = sp.bid + sc.bid - lp.ask - lc.ask;
+    if (credit <= 0) return null;
+    const width = Math.max(sp.strike - lp.strike, lc.strike - sc.strike);
+    const maxLoss = (width - credit) * 100;
+    const maxProfit = credit * 100;
+    const beLow = sp.strike - credit;
+    const beHigh = sc.strike + credit;
+    const pop = ((1 - Math.abs(sp.delta)) + (1 - Math.abs(sc.delta)) - 1) * 100;
+    // Greeks (net, short-perspective)
+    const netDelta = -sp.delta - sc.delta + lp.delta + lc.delta;
+    const netTheta = -sp.theta - sc.theta + lp.theta + lc.theta; // short = +theta
+    const netVega = -sp.vega - sc.vega + lp.vega + lc.vega;
+    return {
+      tier: 'conservative', label: 'Iron Condor', icon: '🟢',
+      legs: [
+        { action: 'BUY', type: 'put', strike: lp.strike, price: lp.ask },
+        { action: 'SELL', type: 'put', strike: sp.strike, price: sp.bid },
+        { action: 'SELL', type: 'call', strike: sc.strike, price: sc.bid },
+        { action: 'BUY', type: 'call', strike: lc.strike, price: lc.ask },
+      ],
+      credit: maxProfit, maxLoss, maxProfit, beLow, beHigh,
+      roc: (maxProfit / maxLoss) * 100,
+      pop: Math.min(95, Math.max(55, pop)),
+      pot: Math.min(95, 2 * (1 - (pop/100)) * 100),
+      days50: Math.round(meta.dte * 0.5),
+      bpr: maxLoss,
+      netDelta, netTheta, netVega,
+      dte: meta.dte, expiration: exp,
+    };
+  })();
+
+  // PUT CREDIT SPREAD
+  const pcs = (() => {
+    const sp = nearD(puts, -0.27);
+    if (!sp) return null;
+    const lp = puts.find(p => p.strike < sp.strike && (sp.strike - p.strike) >= (S < 25 ? 1 : S < 100 ? 5 : 10));
+    if (!lp) return null;
+    const credit = sp.bid - lp.ask;
+    if (credit <= 0) return null;
+    const width = sp.strike - lp.strike;
+    const maxLoss = (width - credit) * 100;
+    const maxProfit = credit * 100;
+    const beLow = sp.strike - credit;
+    const pop = (1 - Math.abs(sp.delta)) * 100;
+    const netDelta = -sp.delta + lp.delta;
+    const netTheta = -sp.theta + lp.theta;
+    const netVega = -sp.vega + lp.vega;
+    return {
+      tier: 'moderate', label: 'Put Credit Spread', icon: '🟡',
+      legs: [
+        { action: 'SELL', type: 'put', strike: sp.strike, price: sp.bid },
+        { action: 'BUY', type: 'put', strike: lp.strike, price: lp.ask },
+      ],
+      credit: maxProfit, maxLoss, maxProfit, beLow, beHigh: Infinity,
+      roc: (maxProfit / maxLoss) * 100,
+      pop: Math.min(90, Math.max(55, pop)),
+      pot: Math.min(95, 2 * Math.abs(sp.delta) * 100),
+      days50: Math.round(meta.dte * 0.4),
+      bpr: maxLoss,
+      netDelta, netTheta, netVega,
+      dte: meta.dte, expiration: exp,
+    };
+  })();
+
+  // SHORT STRANGLE
+  const str = (() => {
+    const sp = nearD(puts, -0.32), sc = nearD(calls, 0.32);
+    if (!sp || !sc) return null;
+    const credit = sp.bid + sc.bid;
+    if (credit <= 0) return null;
+    const beLow = sp.strike - credit;
+    const beHigh = sc.strike + credit;
+    const capital = (sp.strike * 100) * 0.2;
+    const pop = ((1 - Math.abs(sp.delta)) + (1 - Math.abs(sc.delta)) - 1) * 100;
+    const netDelta = -sp.delta - sc.delta;
+    const netTheta = -sp.theta - sc.theta;
+    const netVega = -sp.vega - sc.vega;
+    return {
+      tier: 'aggressive', label: 'Short Strangle', icon: '🔴',
+      legs: [
+        { action: 'SELL', type: 'put', strike: sp.strike, price: sp.bid },
+        { action: 'SELL', type: 'call', strike: sc.strike, price: sc.bid },
+      ],
+      credit: credit * 100, maxLoss: null, maxProfit: credit * 100, beLow, beHigh,
+      roc: (credit * 100 / capital) * 100,
+      pop: Math.min(85, Math.max(50, pop)),
+      pot: Math.min(95, 2 * (Math.abs(sp.delta) + Math.abs(sc.delta)) * 100),
+      days50: Math.round(meta.dte * 0.4),
+      bpr: capital,
+      netDelta, netTheta, netVega,
+      dte: meta.dte, expiration: exp,
+      undefined: true,
+    };
+  })();
+
+  const cards = [ic, pcs, str].filter(Boolean);
+  if (cards.length === 0) {
+    wrap.innerHTML = `<div class="empty-state"><div class="big">—</div><div class="msg">Insufficient liquid strikes for this expiry. Try a different expiration.</div></div>`;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div class="subsection">
+      <div class="subsection-header">
+        <div class="subsection-title">${fmt.shortDate(exp)} · ${meta.dte} DTE <span class="tag">${meta.expType.toUpperCase()}</span></div>
+        <div class="dim" style="font-family:var(--mono);font-size:11px">${cards.length} structures generated</div>
+      </div>
+      <div class="multileg-grid">
+        ${cards.map(t => mlCard(t, S)).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function mlCard(t, S) {
+  const legsHtml = t.legs.map(l => `<div class="leg-${l.action === 'SELL' ? 'sell' : 'buy'}">${l.action} ${fmt.usd(l.strike)} ${l.type} @ ${fmt.usd(l.price)}</div>`).join('');
+  const payoff = drawPayoff(t, S);
+  const data = JSON.stringify(t).replace(/'/g,"&#39;");
+  return `
+    <div class="ml-card ${t.tier}">
+      <div class="ml-header">
+        <div>
+          <div class="ml-tier">${t.icon} ${t.tier.toUpperCase()}</div>
+          <div class="ml-structure">${t.label}</div>
+        </div>
+        <div class="ml-pop">${t.dte} DTE<br>${fmt.shortDate(t.expiration)}</div>
+      </div>
+      <div class="ml-legs">${legsHtml}</div>
+      <div class="ml-payoff">${payoff}</div>
+      <div class="ml-metrics">
+        <div class="ml-metric"><span class="k">Max Profit</span><span class="v g">${fmt.usd(t.maxProfit)}</span></div>
+        <div class="ml-metric"><span class="k">Max Loss</span><span class="v r">${t.maxLoss == null ? 'Undefined' : fmt.usd(t.maxLoss)}</span></div>
+        <div class="ml-metric"><span class="k">BE Low</span><span class="v">${fmt.usd(t.beLow)}</span></div>
+        <div class="ml-metric"><span class="k">BE High</span><span class="v">${t.beHigh === Infinity ? '∞' : fmt.usd(t.beHigh)}</span></div>
+        <div class="ml-metric"><span class="k">RoC</span><span class="v g">${t.roc.toFixed(1)}%</span></div>
+        <div class="ml-metric"><span class="k">PoP</span><span class="v">${t.pop.toFixed(0)}%</span></div>
+        <div class="ml-metric"><span class="k">PoT</span><span class="v a">${t.pot.toFixed(0)}%</span></div>
+        <div class="ml-metric"><span class="k">Days to 50%</span><span class="v">${t.days50}d</span></div>
+        <div class="ml-metric"><span class="k">BPR</span><span class="v">${fmt.usd(t.bpr)}</span></div>
+      </div>
+      <div class="ml-greeks">
+        <div>NET Δ<span class="greek-val">${t.netDelta.toFixed(2)}</span></div>
+        <div>θ / day<span class="greek-val g">${(t.netTheta * 100).toFixed(1)}</span></div>
+        <div>Vega<span class="greek-val">${(t.netVega * 100).toFixed(1)}</span></div>
+      </div>
+      <div class="sug-actions" style="margin-top:10px">
+        <button class="btn btn-sm primary" onclick='openTradeFromMultileg(${data})' style="width:100%">Open Trade</button>
+      </div>
+    </div>`;
+}
+
+function drawPayoff(t, S) {
+  const strikes = t.legs.map(l => l.strike);
+  const lo = Math.min(...strikes) * 0.82;
+  const hi = Math.max(...strikes) * 1.18;
+  const steps = 80;
+  const points = [];
+  for (let i = 0; i <= steps; i++) {
+    const p = lo + (hi - lo) * (i / steps);
+    let pnl = 0;
+    for (const leg of t.legs) {
+      const intrinsic = leg.type === 'call' ? Math.max(0, p - leg.strike) : Math.max(0, leg.strike - p);
+      const sign = leg.action === 'SELL' ? 1 : -1;
+      pnl += sign * (leg.price - intrinsic) * 100;
+    }
+    points.push({ p, pnl });
+  }
+  const w = 260, h = 90, pad = 8;
+  const pnlMin = Math.min(...points.map(x => x.pnl));
+  const pnlMax = Math.max(...points.map(x => x.pnl));
+  const yZero = pad + (pnlMax / (pnlMax - pnlMin || 1)) * (h - 2*pad);
+  const xAt = p => pad + ((p - lo) / (hi - lo)) * (w - 2*pad);
+  const yAt = v => pad + ((pnlMax - v) / (pnlMax - pnlMin || 1)) * (h - 2*pad);
+  let posPath = '', negPath = '';
+  for (let i = 0; i < points.length; i++) {
+    const x = xAt(points[i].p), y = yAt(points[i].pnl);
+    const cmd = (posPath === '' && points[i].pnl >= 0) || (negPath === '' && points[i].pnl < 0) ? 'M' : 'L';
+    if (points[i].pnl >= 0) posPath += `${cmd === 'M' && posPath !== '' ? 'L' : cmd}${x.toFixed(1)},${y.toFixed(1)} `;
+    else negPath += `${cmd === 'M' && negPath !== '' ? 'L' : cmd}${x.toFixed(1)},${y.toFixed(1)} `;
+  }
+  const areaPath = points.map((pt, i) => {
+    const x = xAt(pt.p), y = yAt(Math.max(0, pt.pnl));
+    return (i === 0 ? 'M' : 'L') + `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ') + ` L${xAt(points[points.length-1].p).toFixed(1)},${yZero.toFixed(1)} L${xAt(points[0].p).toFixed(1)},${yZero.toFixed(1)} Z`;
+  const sX = xAt(S);
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" style="display:block">
+    <defs>
+      <linearGradient id="plg-${t.tier}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#00ff88" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="#00ff88" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <line x1="${pad}" y1="${yZero.toFixed(1)}" x2="${w-pad}" y2="${yZero.toFixed(1)}" stroke="#3a3a48" stroke-dasharray="2 3"/>
+    <path d="${areaPath}" fill="url(#plg-${t.tier})"/>
+    <path d="${posPath}" fill="none" stroke="#00ff88" stroke-width="1.5"/>
+    <path d="${negPath}" fill="none" stroke="#ff3b5c" stroke-width="1.5"/>
+    <line x1="${sX.toFixed(1)}" y1="${pad}" x2="${sX.toFixed(1)}" y2="${h-pad}" stroke="#4a9eff" stroke-width="1" stroke-dasharray="1 2" opacity="0.7"/>
+    <text x="${sX.toFixed(1)}" y="${h-1}" font-family="JetBrains Mono" font-size="8" fill="#4a9eff" text-anchor="middle">${fmt.usd(S, 0)}</text>
+  </svg>`;
+}
+
+// ---------- POSITIONS & JOURNAL ----------
+let posFilter = 'open';
+
+function filterPositions(f, btn) {
+  posFilter = f;
+  document.querySelectorAll('.tab-inline').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderPositions();
+}
+
+function positionStatus(p) {
+  if (p.closed) return p.outcome === 'assigned' ? 'assigned' : p.netPnl >= 0 ? 'profit' : 'risk';
+  if (!State.currentData || State.currentTicker !== p.ticker) return 'open';
+  const S = State.currentData.quote.last;
+  const short = Number(String(p.strikes).split('/')[0]);
+  if (p.strategy === 'CSP') return S > short * 1.02 ? 'profit' : S < short ? 'risk' : 'open';
+  if (p.strategy === 'CC') return S < short * 0.98 ? 'profit' : S > short ? 'risk' : 'open';
+  return 'open';
+}
+
+function statusPill(status) {
+  const map = {
+    open: { cls: 'status-open', txt: '🟡 Open' },
+    profit: { cls: 'status-profit', txt: '🟢 Profitable' },
+    risk: { cls: 'status-risk', txt: '🔴 At Risk' },
+    assigned: { cls: 'status-assigned', txt: '⚙ Assigned' },
+    closed: { cls: 'status-closed', txt: '✓ Closed' },
+  };
+  const m = map[status] || map.open;
+  return `<span class="status-pill ${m.cls}">${m.txt}</span>`;
+}
+
+function renderPositions() {
+  const wrap = document.getElementById('positionsContainer');
+  let list = State.positions;
+  if (posFilter === 'open') list = list.filter(p => !p.closed);
+  else if (posFilter === 'closed') list = list.filter(p => p.closed);
+  list = list.filter(p => p.strategy === 'CSP' || p.strategy === 'CC');
+
+  if (list.length === 0) {
+    wrap.innerHTML = `<div class="empty-state"><div class="big">∅</div><div class="msg">No ${posFilter} wheel positions. Open a CSP or CC from the finders above.</div></div>`;
+    return;
+  }
+
+  const rows = list.map(p => {
+    const status = p.closed ? (p.outcome === 'assigned' ? 'assigned' : 'closed') : positionStatus(p);
+    const curPrice = (State.currentTicker === p.ticker && State.currentData) ? State.currentData.quote.last : null;
+    const premium = p.premium * p.contracts * 100;
+    let pnl;
+    if (p.closed) pnl = p.netPnl;
+    else if (curPrice != null) {
+      const short = Number(String(p.strikes).split('/')[0]);
+      const intrinsic = p.strategy === 'CSP' ? Math.max(0, short - curPrice) : Math.max(0, curPrice - short);
+      pnl = (p.premium - intrinsic) * p.contracts * 100;
+    } else pnl = premium;
+    const pnlCls = pnl >= 0 ? 'g' : 'r';
+    const actions = renderRowActions(p);
+    return `<tr>
+      <td><strong>${p.ticker}</strong></td>
+      <td>${p.strategy}${p.rolledFrom ? ' <span class="dim" title="Rolled from prior position">🔄</span>' : ''}</td>
+      <td>${p.strikes}</td>
+      <td>${fmt.shortDate(p.expiry)}</td>
+      <td class="right">${p.contracts}</td>
+      <td class="right g">${fmt.usd(premium)}</td>
+      <td class="right">${curPrice != null ? fmt.usd(curPrice) : '—'}</td>
+      <td class="right ${pnlCls}"><strong>${fmt.usd(pnl)}</strong></td>
+      <td>${statusPill(status)}</td>
+      <td class="center">${actions}</td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>Ticker</th><th>Type</th><th>Strike(s)</th><th>Expiry</th>
+      <th class="right">Ct</th>
+      <th class="right">Premium</th><th class="right">Current</th><th class="right">P&L</th>
+      <th>Status</th><th class="center">Actions</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function renderRowActions(p) {
+  if (p.closed) {
+    return `<div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-sm ghost" title="Notes" onclick="openNotesModal('${p.id}')">📝</button>
+      <button class="btn btn-sm ghost" title="Edit" onclick="openEditModal('${p.id}')">✎</button>
+      <button class="btn btn-sm danger" title="Delete" onclick="deletePosition('${p.id}')">✕</button>
+    </div>`;
+  }
+  return `<div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap">
+    <button class="btn btn-sm primary" onclick="openCloseModal('${p.id}')">Close</button>
+    <button class="btn btn-sm" onclick="openRollModal('${p.id}')">🔄 Roll</button>
+    <button class="btn btn-sm ghost" title="Notes" onclick="openNotesModal('${p.id}')">📝</button>
+    <button class="btn btn-sm ghost" title="Edit" onclick="openEditModal('${p.id}')">✎</button>
+    <button class="btn btn-sm danger" title="Delete" onclick="deletePosition('${p.id}')">✕</button>
+  </div>`;
+}
+
+function setJournalMonth(m) { State.journalMonth = m; renderJournal(); }
+
+// Italian tax accounting: gains/losses accumulate Jan 1 → Dec 31 within a calendar year,
+// with prior-year losses carryforward up to 4 years. Returns YTD-aware view for a given month.
+// month: 'YYYY-MM'
+function computeMonthTaxView(month) {
+  const [yr, mo] = month.split('-').map(Number);
+  // Prior-year carry: net negative balance from earlier years
+  const tax = computeItalianTax(String(yr));
+  // Sum prior-year loss balance available at start of THIS year (already aged in computeItalianTax)
+  // We re-derive the carry available at start of this year by replaying years up to yr-1
+  const all = State.positions || [];
+  const closedByYear = {};
+  all.filter(p => p.closed && p.closedAt).forEach(p => {
+    const y = new Date(p.closedAt).getFullYear();
+    closedByYear[y] = (closedByYear[y] || 0) + (p.netPnl || 0);
+  });
+  let carry = []; // {year, amount}
+  Object.keys(closedByYear).map(Number).sort().filter(y => y < yr).forEach(y => {
+    const net = closedByYear[y];
+    carry = carry.filter(c => y - c.year <= 4);
+    if (net > 0) {
+      let remaining = net;
+      for (const c of carry) {
+        if (remaining <= 0) break;
+        const use = Math.min(remaining, c.amount);
+        c.amount -= use; remaining -= use;
+      }
+      carry = carry.filter(c => c.amount > 0);
+    } else if (net < 0) {
+      carry.push({ year: y, amount: -net });
+    }
+  });
+  carry = carry.filter(c => yr - c.year <= 4);
+  const priorYearCarryAvail = carry.reduce((s, c) => s + c.amount, 0);
+
+  // Walk months 1..12 of THIS year, building cumulative gross within year + applying prior-year carry against any net positive YTD
+  const monthlyGross = Array(12).fill(0);
+  all.filter(p => p.closed && p.closedAt).forEach(p => {
+    const d = new Date(p.closedAt);
+    if (d.getFullYear() !== yr) return;
+    monthlyGross[d.getMonth()] += p.netPnl || 0;
+  });
+
+  let ytdGross = 0, ytdTaxOwed = 0;
+  // Use a copy of carry that we deplete as we go
+  let carryRemaining = priorYearCarryAvail;
+  let monthAtStart = null, monthAtEnd = null;
+  for (let m = 0; m < 12; m++) {
+    const startGross = ytdGross;
+    const startTax = ytdTaxOwed;
+    ytdGross += monthlyGross[m];
+    // Taxable YTD = max(0, ytdGross - prior-year carry available at year start)
+    const taxableYtd = Math.max(0, ytdGross - priorYearCarryAvail);
+    ytdTaxOwed = taxableYtd * 0.26;
+    if (m === mo - 1) {
+      monthAtStart = { ytdGross: startGross, taxOwed: startTax };
+      monthAtEnd = { ytdGross, taxOwed: ytdTaxOwed };
+    }
+  }
+  monthAtStart = monthAtStart || { ytdGross: 0, taxOwed: 0 };
+  monthAtEnd = monthAtEnd || { ytdGross: 0, taxOwed: 0 };
+  const monthGross = monthlyGross[mo - 1] || 0;
+  const marginalTax = Math.max(0, monthAtEnd.taxOwed - monthAtStart.taxOwed);
+  // YTD-effective offset used so far (prior-year carry consumed up to this point)
+  const usedPriorCarry = Math.min(priorYearCarryAvail, Math.max(0, monthAtEnd.ytdGross));
+  // YTD intra-year offset: if cumulative YTD < monthGross sum, prior months had losses absorbing this month
+  const ytdIntraYearOffset = Math.max(0, (monthGross > 0 ? monthGross - Math.max(0, monthAtEnd.ytdGross - monthAtStart.ytdGross) : 0));
+
+  return {
+    year: yr, monthGross,
+    ytdGrossEnd: monthAtEnd.ytdGross,
+    ytdTaxOwed: monthAtEnd.taxOwed,
+    marginalTax,
+    priorYearCarryAvail,
+    usedPriorCarry,
+    netAfterTaxThisMonth: monthGross - marginalTax,
+    netAfterTaxYtd: monthAtEnd.ytdGross - monthAtEnd.taxOwed,
+  };
+}
+
+function tradeMonths() {
+  const set = new Set();
+  State.positions.forEach(p => {
+    if (p.opened) set.add(new Date(p.opened).toISOString().slice(0,7));
+    if (p.openedAt) set.add(new Date(p.openedAt).toISOString().slice(0,7));
+    if (p.closedAt) set.add(new Date(p.closedAt).toISOString().slice(0,7));
+  });
+  return [...set].filter(Boolean).sort().reverse();
+}
+
+function renderJournal() {
+  const wrap = document.getElementById('journalContainer');
+  document.getElementById('journalCount').textContent = State.positions.length;
+  if (State.positions.length === 0) {
+    wrap.innerHTML = `<div class="empty-state"><div class="big">📒</div><div class="msg">No trades logged yet. Opened trades will appear here with full details.</div></div>`;
+    return;
+  }
+
+  const month = State.journalMonth || 'all';
+  const months = tradeMonths();
+  const matchesMonth = (p) => {
+    if (month === 'all') return true;
+    const oM = (p.opened || p.openedAt) ? new Date(p.opened || p.openedAt).toISOString().slice(0,7) : null;
+    const cM = p.closedAt ? new Date(p.closedAt).toISOString().slice(0,7) : null;
+    return oM === month || cM === month;
+  };
+
+  // Month pills
+  const pills = ['all', ...months].map(m => {
+    const label = m === 'all' ? 'All' : new Date(m + '-01').toLocaleDateString('en', {month:'short', year:'numeric'});
+    const cls = month === m ? 'tab-inline active' : 'tab-inline';
+    return `<button class="${cls}" onclick="setJournalMonth('${m}')">${label}</button>`;
+  }).join('');
+
+  // Month summary
+  let summaryHTML = '';
+  if (month !== 'all') {
+    const filtered = State.positions.filter(matchesMonth);
+    const openedThis = filtered.filter(p => {
+      const oM = (p.opened || p.openedAt) ? new Date(p.opened || p.openedAt).toISOString().slice(0,7) : null;
+      return oM === month;
+    });
+    const closedThis = filtered.filter(p => {
+      const cM = p.closedAt ? new Date(p.closedAt).toISOString().slice(0,7) : null;
+      return cM === month;
+    });
+    const openedPrem = openedThis.reduce((s,p) => s + (p.premium||0)*(p.contracts||0)*100, 0);
+    const realized = closedThis.reduce((s,p) => s + (p.netPnl||0), 0);
+    const wins = closedThis.filter(p => (p.netPnl||0) > 0).length;
+    const wr = closedThis.length ? wins/closedThis.length*100 : 0;
+    const tx = computeMonthTaxView(month);
+    summaryHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0">
+      ${[
+        ['OPENED', openedThis.length, '', `${fmt.usd(openedPrem)} credit`],
+        ['CLOSED', closedThis.length, '', `${wins}W / ${closedThis.length-wins}L`],
+        ['REALIZED THIS MONTH', fmt.usd(realized), realized>=0?'g':'r', `${wr.toFixed(0)}% win rate`],
+        ['YTD GROSS · ' + tx.year, fmt.usd(tx.ytdGrossEnd), tx.ytdGrossEnd>=0?'g':'r', `Jan 1 → end of month`],
+        ['MARGINAL TAX (26%)', fmt.usd(tx.marginalTax), 'r', tx.marginalTax > 0 ? 'owed on this month' : 'offset by prior losses'],
+        ['NET AFTER TAX (mo)', fmt.usd(tx.netAfterTaxThisMonth), tx.netAfterTaxThisMonth>=0?'g':'r', `YTD net: ${fmt.usd(tx.netAfterTaxYtd)}`]
+      ].map(([l,v,c,s]) => `<div class="stat-card"><div class="stat-label">${l}</div><div class="stat-val ${c}">${v}</div>${s?`<div class="stat-sub">${s}</div>`:''}</div>`).join('')}
+    </div>`;
+  }
+
+  const rows = State.positions.slice().reverse().filter(matchesMonth).map(p => {
+    const openedDate = p.opened || p.openedAt;
+    const opened = openedDate ? fmt.shortDate(openedDate) : '—';
+    const premium = p.premium * p.contracts * 100;
+    const days = (p.closed && openedDate) ? Math.round((new Date(p.closedAt) - new Date(openedDate)) / 86400000) : '—';
+    const status = p.closed ? (p.outcome === 'assigned' ? 'assigned' : p.outcome === 'rolled' ? 'closed' : 'closed') : 'open';
+    const pnl = p.closed ? p.netPnl : premium;
+    const pnlCls = pnl >= 0 ? 'g' : 'r';
+    const rocMo = p.capital > 0 ? (pnl / p.capital) * (30 / Math.max(1, days === '—' ? fmt.dte(p.expiry) : days)) * 100 : 0;
+    const notesIcon = p.notes ? '<span title="' + p.notes.replace(/"/g,'&quot;') + '" style="color:var(--accent-blue)">📝</span>' : '<span class="dim">—</span>';
+    return `<tr>
+      <td>${opened}</td>
+      <td><strong>${p.ticker}</strong></td>
+      <td>${p.strategy}${p.rolledFrom ? ' <span class="dim" title="Rolled from prior">🔄</span>' : ''}${p.outcome === 'rolled' ? ' <span class="a" title="Rolled to new position">↗</span>' : ''}</td>
+      <td>${p.strikes}</td>
+      <td>${fmt.shortDate(p.expiry)}</td>
+      <td class="right">${p.contracts}</td>
+      <td class="right g">${fmt.usd(premium)}</td>
+      <td class="right">${p.closed ? fmt.usd(p.closePrice * p.contracts * 100) : '—'}</td>
+      <td class="right ${pnlCls}"><strong>${fmt.usd(pnl)}</strong></td>
+      <td class="right">${isFinite(rocMo) && rocMo !== 0 ? rocMo.toFixed(2) + '%' : '—'}</td>
+      <td class="right">${days === '—' ? fmt.dte(p.expiry) + 'd' : days + 'd'}</td>
+      <td>${statusPill(status)}</td>
+      <td class="center">${notesIcon}</td>
+      <td class="center">${renderRowActions(p)}</td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `
+    <div class="tabs-inline" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">${pills}</div>
+    ${summaryHTML}
+    <div class="table-wrap"><table>
+    <thead><tr>
+      <th>Opened</th><th>Ticker</th><th>Type</th><th>Strike(s)</th><th>Expiry</th>
+      <th class="right">Ct</th>
+      <th class="right">Gross Prem</th><th class="right">Buyback</th><th class="right">Net P&L</th>
+      <th class="right">RoC/mo</th><th class="right">Days</th><th>Status</th><th class="center">Notes</th><th class="center">Actions</th>
+    </tr></thead>
+    <tbody>${rows || '<tr><td colspan="14" style="color:var(--text-dim);text-align:center;padding:20px">No trades in this month</td></tr>'}</tbody>
+  </table></div>`;
+}
+
+function updatePortfolioBar() {
+  const open = State.positions.filter(p => !p.closed);
+  const closed = State.positions.filter(p => p.closed);
+  const totalPremium = open.reduce((s, p) => s + p.premium * p.contracts * 100, 0);
+  const realized = closed.reduce((s, p) => s + p.netPnl, 0);
+  const wins = closed.filter(p => p.netPnl > 0).length;
+  const winRate = closed.length > 0 ? (wins / closed.length) * 100 : null;
+  animateNumber(document.getElementById('statOpen'), open.length);
+  animateNumber(document.getElementById('statPremium'), totalPremium, '$', '', 0);
+  const pnlEl = document.getElementById('statPnl');
+  pnlEl.textContent = fmt.usd(realized);
+  pnlEl.classList.remove('green', 'red');
+  pnlEl.classList.add(realized >= 0 ? 'green' : 'red');
+  document.getElementById('statWin').textContent = winRate == null ? '—' : winRate.toFixed(0) + '%';
+}
+
+// ---------- TAB SWITCHING ----------
+function switchTab(tab) {
+  State.activeTab = tab;
+  document.querySelectorAll('.main-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `tab-${tab}`));
+  if (tab === 'journal') renderJournal();
+  if (tab === 'analytics') renderAnalytics();
+  if (tab === 'import') initImportTab();
+}
+
+// ---------- TRADE ACTIONS ----------
+function openTradeFromCSP(o) {
+  const form = document.getElementById('openTradeForm');
+  document.getElementById('openTradeTitle').textContent = 'Open Cash-Secured Put';
+  form.ticker.value = State.currentTicker || o.underlying;
+  form.strategy.value = 'CSP';
+  form.strikes.value = o.strike;
+  form.expiry.value = o.expiration;
+  form.premium.value = o.mid.toFixed(2);
+  form.contracts.value = 1;
+  form.capital.value = (o.strike * 100).toFixed(2);
+  form.delta.value = o.delta.toFixed(3);
+  document.getElementById('openTradeModal').classList.add('active');
+}
+
+function openTradeFromCC(o, basis) {
+  const form = document.getElementById('openTradeForm');
+  document.getElementById('openTradeTitle').textContent = 'Open Covered Call';
+  form.ticker.value = State.currentTicker || o.underlying;
+  form.strategy.value = 'CC';
+  form.strikes.value = o.strike;
+  form.expiry.value = o.expiration;
+  form.premium.value = o.mid.toFixed(2);
+  form.contracts.value = 1;
+  form.capital.value = (basis * 100).toFixed(2);
+  form.delta.value = o.delta.toFixed(3);
+  document.getElementById('openTradeModal').classList.add('active');
+}
+
+function openTradeFromMultileg(t) {
+  const form = document.getElementById('openTradeForm');
+  document.getElementById('openTradeTitle').textContent = `Open ${t.label}`;
+  form.ticker.value = State.currentTicker;
+  form.strategy.value = t.label === 'Iron Condor' ? 'IC' : t.label === 'Put Credit Spread' ? 'PCS' : t.label === 'Short Strangle' ? 'STR' : 'OTHER';
+  form.strikes.value = t.legs.map(l => l.strike).join('/');
+  form.expiry.value = t.expiration;
+  form.premium.value = (t.credit / 100).toFixed(2);
+  form.contracts.value = 1;
+  form.capital.value = t.bpr.toFixed(2);
+  form.delta.value = '';
+  document.getElementById('openTradeModal').classList.add('active');
+}
+
+function submitOpenTrade(e) {
+  e.preventDefault();
+  const form = e.target;
+  const f = new FormData(form);
+  const trade = {
+    id: 't_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    ticker: f.get('ticker').toUpperCase(),
+    strategy: f.get('strategy'),
+    strikes: f.get('strikes'),
+    expiry: f.get('expiry'),
+    premium: parseFloat(f.get('premium')),
+    contracts: parseInt(f.get('contracts')),
+    capital: parseFloat(f.get('capital')),
+    delta: f.get('delta') ? parseFloat(f.get('delta')) : null,
+    opened: new Date().toISOString(),
+    closed: false,
+  };
+  State.positions.push(trade);
+  Storage.savePositions();
+  closeModal('openTradeModal');
+  form.reset();
+  renderPositions();
+  renderJournal();
+  updatePortfolioBar();
+  if (State.currentData) renderSnapshot(); // update chart strike overlays
+  toast(`Trade logged: ${trade.ticker} ${trade.strategy} ${trade.strikes}`);
+}
+
+let closeMode = 'per'; // 'per' or 'total'
+let currentCloseTradeId = null;
+
+function setCloseMode(mode, btn) {
+  closeMode = mode;
+  btn.parentElement.querySelectorAll('.tab-inline').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  updateClosePreview();
+}
+
+function handleOutcomeChange(val) {
+  const form = document.getElementById('closeTradeForm');
+  if (val === 'expired' || val === 'assigned') {
+    form.elements.closeAmount.value = '0';
+  }
+  updateClosePreview();
+}
+
+function updateClosePreview() {
+  if (!currentCloseTradeId) return;
+  const p = State.positions.find(x => x.id === currentCloseTradeId);
+  if (!p) return;
+  const form = document.getElementById('closeTradeForm');
+  const ct = parseInt(form.elements.closeContracts.value) || 0;
+  const amt = parseFloat(form.elements.closeAmount.value) || 0;
+  const perContract = closeMode === 'per' ? amt : (ct > 0 ? amt / (ct * 100) : 0);
+  const totalBuyback = closeMode === 'total' ? amt : amt * ct * 100;
+  const grossPrem = p.premium * ct * 100;
+  const netPnl = grossPrem - totalBuyback;
+  const pnlCls = netPnl >= 0 ? 'g' : 'r';
+  const preview = document.getElementById('closePreview');
+  const remaining = p.contracts - ct;
+  const splitMsg = ct < p.contracts ? `<br><span class="a">⚠ Partial close — ${remaining} contracts stay open as a separate record.</span>` : '';
+  preview.innerHTML = `
+    <div style="font-family:var(--mono);font-size:12px;line-height:1.8">
+      <div>Per-contract buyback: <strong>${fmt.usd(perContract)}</strong></div>
+      <div>Total buyback cost: <strong>${fmt.usd(totalBuyback)}</strong></div>
+      <div>Gross premium (${ct}×): <strong class="g">${fmt.usd(grossPrem)}</strong></div>
+      <div style="font-size:14px;margin-top:4px">Net P&L: <strong class="${pnlCls}">${netPnl >= 0 ? '+' : ''}${fmt.usd(netPnl)}</strong></div>
+      ${splitMsg}
+    </div>`;
+}
+
+function openCloseModal(id) {
+  const p = State.positions.find(x => x.id === id);
+  if (!p) return;
+  currentCloseTradeId = id;
+  closeMode = 'per';
+  const form = document.getElementById('closeTradeForm');
+  form.elements.id.value = id;
+  form.elements.closeContracts.value = p.contracts;
+  form.elements.closeContracts.max = p.contracts;
+  form.elements.closeAmount.value = '';
+  form.elements.closeDate.value = fmt.date(new Date());
+  form.elements.outcome.value = 'closed';
+  form.elements.notes.value = '';
+  // reset mode toggles
+  form.querySelectorAll('.tab-inline').forEach(b => b.classList.toggle('active', b.dataset.mode === 'per'));
+  const gross = p.premium * p.contracts * 100;
+  document.getElementById('closeTradeInfo').innerHTML =
+    `<strong style="color:var(--text-primary)">${p.ticker} ${p.strategy} ${p.strikes}</strong> · Expires ${fmt.shortDate(p.expiry)}<br>
+     Open: <strong>${p.contracts}</strong> contracts · Premium/ct: ${fmt.usd(p.premium)} · Total collected: <strong class="g">${fmt.usd(gross)}</strong>`;
+  updateClosePreview();
+  document.getElementById('closeTradeModal').classList.add('active');
+}
+
+function submitCloseTrade(e) {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const id = f.get('id');
+  const p = State.positions.find(x => x.id === id);
+  if (!p) return;
+  const closeContracts = parseInt(f.get('closeContracts'));
+  if (closeContracts < 1 || closeContracts > p.contracts) {
+    toast('Invalid contracts — must be 1 to ' + p.contracts, 'error');
+    return;
+  }
+  const amt = parseFloat(f.get('closeAmount'));
+  const perContract = closeMode === 'per' ? amt : (closeContracts > 0 ? amt / (closeContracts * 100) : 0);
+  const closeDate = f.get('closeDate');
+  const notes = f.get('notes') || '';
+
+  if (closeContracts < p.contracts) {
+    // Partial close: split the trade
+    const closedPortion = {
+      ...p,
+      id: 't_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      contracts: closeContracts,
+      closed: true,
+      closePrice: perContract,
+      outcome: f.get('outcome'),
+      closedAt: new Date(closeDate).toISOString(),
+      netPnl: (p.premium - perContract) * closeContracts * 100,
+      notes: notes || p.notes,
+    };
+    p.contracts = p.contracts - closeContracts;
+    State.positions.push(closedPortion);
+    toast(`Closed ${closeContracts} of ${closeContracts + p.contracts} contracts · ${closedPortion.netPnl >= 0 ? '+' : ''}${fmt.usd(closedPortion.netPnl)}`, closedPortion.netPnl >= 0 ? 'info' : 'warn');
+  } else {
+    // Full close
+    p.closed = true;
+    p.closePrice = perContract;
+    p.outcome = f.get('outcome');
+    p.closedAt = new Date(closeDate).toISOString();
+    p.netPnl = (p.premium - perContract) * p.contracts * 100;
+    if (notes) p.notes = notes;
+    toast(`Closed ${p.ticker} ${p.strategy} · ${p.netPnl >= 0 ? '+' : ''}${fmt.usd(p.netPnl)}`, p.netPnl >= 0 ? 'info' : 'warn');
+  }
+
+  Storage.savePositions();
+  closeModal('closeTradeModal');
+  renderPositions();
+  renderJournal();
+  updatePortfolioBar();
+  if (State.currentData) renderSnapshot();
+}
+
+// ---------- EDIT TRADE ----------
+function openEditModal(id) {
+  const p = State.positions.find(x => x.id === id);
+  if (!p) return;
+  const form = document.getElementById('editTradeForm');
+  form.elements.id.value = id;
+  form.elements.ticker.value = p.ticker;
+  form.elements.strategy.value = p.strategy;
+  form.elements.strikes.value = p.strikes;
+  form.elements.expiry.value = p.expiry;
+  form.elements.premium.value = p.premium;
+  form.elements.contracts.value = p.contracts;
+  form.elements.capital.value = p.capital;
+  form.elements.opened.value = fmt.date(p.opened);
+  form.elements.notes.value = p.notes || '';
+  document.getElementById('editTradeModal').classList.add('active');
+}
+
+function submitEditTrade(e) {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const id = f.get('id');
+  const p = State.positions.find(x => x.id === id);
+  if (!p) return;
+  p.ticker = f.get('ticker').toUpperCase();
+  p.strategy = f.get('strategy');
+  p.strikes = f.get('strikes');
+  p.expiry = f.get('expiry');
+  p.premium = parseFloat(f.get('premium'));
+  p.contracts = parseInt(f.get('contracts'));
+  p.capital = parseFloat(f.get('capital'));
+  p.opened = new Date(f.get('opened')).toISOString();
+  p.notes = f.get('notes');
+  // Recompute netPnl if closed
+  if (p.closed && p.closePrice != null) {
+    p.netPnl = (p.premium - p.closePrice) * p.contracts * 100;
+  }
+  Storage.savePositions();
+  closeModal('editTradeModal');
+  renderPositions();
+  renderJournal();
+  updatePortfolioBar();
+  if (State.currentData) renderSnapshot();
+  toast('Trade updated');
+}
+
+// ---------- NOTES ----------
+function openNotesModal(id) {
+  const p = State.positions.find(x => x.id === id);
+  if (!p) return;
+  const form = document.getElementById('notesForm');
+  form.elements.id.value = id;
+  form.elements.notes.value = p.notes || '';
+  document.getElementById('notesContext').innerHTML =
+    `<strong style="color:var(--text-primary)">${p.ticker} ${p.strategy} ${p.strikes}</strong> · ${fmt.shortDate(p.expiry)} · ${p.contracts} ct`;
+  document.getElementById('notesModal').classList.add('active');
+}
+
+function submitNotes(e) {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const p = State.positions.find(x => x.id === f.get('id'));
+  if (!p) return;
+  p.notes = f.get('notes');
+  Storage.savePositions();
+  closeModal('notesModal');
+  renderJournal();
+  renderPositions();
+  toast('Notes saved');
+}
+
+// ---------- ROLL SIMULATOR ----------
+let currentRollTradeId = null;
+
+function ensureChainForTicker(ticker) {
+  if (State.currentTicker === ticker && State.currentData) return State.currentData;
+  // Generate synthetic on demand
+  const quote = generateQuote(ticker);
+  const chain = generateChain(quote);
+  return { quote, chain };
+}
+
+function openRollModal(id) {
+  const p = State.positions.find(x => x.id === id);
+  if (!p) return;
+  if (p.strategy !== 'CSP' && p.strategy !== 'CC') {
+    toast('Roll simulator currently supports CSP and CC only', 'warn');
+    return;
+  }
+  currentRollTradeId = id;
+  const data = ensureChainForTicker(p.ticker);
+  const optType = p.strategy === 'CSP' ? 'put' : 'call';
+  const currentStrike = Number(String(p.strikes).split('/')[0]);
+
+  // Current leg info
+  const curOpt = data.chain.find(o => o.expiration === p.expiry && o.strike === currentStrike && o.type === optType);
+  const curMid = curOpt ? (curOpt.bid + curOpt.ask) / 2 : p.premium * 0.5;
+
+  document.getElementById('rollInfo').innerHTML =
+    `<strong style="color:var(--text-primary)">${p.ticker} ${p.strategy} ${p.strikes} · ${fmt.shortDate(p.expiry)}</strong>
+     — ${p.contracts} contract${p.contracts > 1 ? 's' : ''}, premium collected ${fmt.usd(p.premium * p.contracts * 100)}<br>
+     Simulate rolling forward: buy back this position and sell a new one at a later date / different strike.`;
+
+  document.getElementById('rollCurrent').innerHTML = `
+    <div style="font-family:var(--mono);font-size:12px;line-height:1.8">
+      <div>Strike: <strong>${fmt.usd(currentStrike)}</strong></div>
+      <div>Expiry: <strong>${fmt.shortDate(p.expiry)}</strong> (${fmt.dte(p.expiry)}d)</div>
+      <div>Est. buyback / ct: <strong class="r">${fmt.usd(curMid)}</strong></div>
+      <div>Total buyback: <strong class="r">${fmt.usd(curMid * p.contracts * 100)}</strong></div>
+    </div>`;
+
+  // Populate new expiry dropdown (only expiries after current)
+  const curDte = fmt.dte(p.expiry);
+  const expSet = new Map();
+  data.chain.forEach(o => {
+    if (o.dte > curDte) expSet.set(o.expiration, { date: o.expiration, dte: o.dte, type: o.expType });
+  });
+  const exps = [...expSet.values()].sort((a, b) => a.dte - b.dte);
+  const expSel = document.getElementById('rollNewExp');
+  expSel.innerHTML = exps.map(e => `<option value="${e.date}">${fmt.shortDate(e.date)} · ${e.dte}d ${e.type === 'weekly' ? '(W)' : '(M)'}</option>`).join('');
+  if (exps.length === 0) {
+    expSel.innerHTML = `<option>No later expirations available</option>`;
+  }
+
+  // Populate strikes for the first expiry
+  updateRollStrikes();
+  updateRollPreview();
+  document.getElementById('rollModal').classList.add('active');
+}
+
+function updateRollStrikes() {
+  const p = State.positions.find(x => x.id === currentRollTradeId);
+  if (!p) return;
+  const data = ensureChainForTicker(p.ticker);
+  const optType = p.strategy === 'CSP' ? 'put' : 'call';
+  const newExp = document.getElementById('rollNewExp').value;
+  const strikes = [...new Set(data.chain.filter(o => o.expiration === newExp && o.type === optType).map(o => o.strike))].sort((a, b) => a - b);
+  const currentStrike = Number(String(p.strikes).split('/')[0]);
+  const strikeSel = document.getElementById('rollNewStrike');
+  strikeSel.innerHTML = strikes.map(k => {
+    const label = fmt.usd(k) + (k === currentStrike ? ' (same)' : p.strategy === 'CSP' ? (k < currentStrike ? ' ↓ safer' : ' ↑ aggressive') : (k > currentStrike ? ' ↑ safer' : ' ↓ aggressive'));
+    return `<option value="${k}" ${k === currentStrike ? 'selected' : ''}>${label}</option>`;
+  }).join('');
+}
+
+function updateRollPreview() {
+  const p = State.positions.find(x => x.id === currentRollTradeId);
+  if (!p) return;
+  const data = ensureChainForTicker(p.ticker);
+  const optType = p.strategy === 'CSP' ? 'put' : 'call';
+  const currentStrike = Number(String(p.strikes).split('/')[0]);
+  const newExp = document.getElementById('rollNewExp').value;
+  const newStrike = parseFloat(document.getElementById('rollNewStrike').value);
+  if (!newExp || !newStrike) return;
+
+  const curOpt = data.chain.find(o => o.expiration === p.expiry && o.strike === currentStrike && o.type === optType);
+  const newOpt = data.chain.find(o => o.expiration === newExp && o.strike === newStrike && o.type === optType);
+  if (!newOpt) return;
+
+  const curBuybackPer = curOpt ? (curOpt.bid + curOpt.ask) / 2 : Math.max(p.premium * 0.5, 0.05);
+  const newCreditPer = (newOpt.bid + newOpt.ask) / 2;
+  const ct = p.contracts;
+  const curBuyback = curBuybackPer * ct * 100;
+  const newCredit = newCreditPer * ct * 100;
+  const netRoll = newCredit - curBuyback;
+  const netRollCls = netRoll >= 0 ? 'g' : 'r';
+  const newDte = fmt.dte(newExp);
+  const daysAdded = newDte - fmt.dte(p.expiry);
+  const newPop = (1 - Math.abs(newOpt.delta)) * 100;
+  const newBreakeven = p.strategy === 'CSP' ? (newStrike - newCreditPer) : (newStrike + newCreditPer);
+  const totalPremiumCollected = p.premium * ct * 100 + netRoll;
+  const strikeChange = newStrike - currentStrike;
+
+  document.getElementById('rollPreview').innerHTML = `
+    <div style="font-family:var(--mono);font-size:12px;line-height:1.8">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 18px">
+        <div>Buy-to-close cost: <strong class="r">${fmt.usd(curBuyback)}</strong></div>
+        <div>New credit: <strong class="g">${fmt.usd(newCredit)}</strong></div>
+        <div>Strike change: <strong>${strikeChange > 0 ? '+' : ''}${fmt.usd(strikeChange)}</strong></div>
+        <div>Days added: <strong>${daysAdded >= 0 ? '+' : ''}${daysAdded}d</strong></div>
+        <div>New Δ: <strong>${newOpt.delta.toFixed(3)}</strong></div>
+        <div>New PoP: <strong>${newPop.toFixed(0)}%</strong></div>
+        <div>New breakeven: <strong>${fmt.usd(newBreakeven)}</strong></div>
+        <div>New DTE: <strong>${newDte}d</strong></div>
+      </div>
+      <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;font-size:14px">
+        <div>Net roll credit/debit: <strong class="${netRollCls}">${netRoll >= 0 ? '+' : ''}${fmt.usd(netRoll)}</strong> ${netRoll >= 0 ? '(credit — you collect more)' : '(debit — you pay up)'}</div>
+        <div style="margin-top:4px">Total premium after roll: <strong class="g">${fmt.usd(totalPremiumCollected)}</strong></div>
+      </div>
+    </div>`;
+}
+
+function executeRoll() {
+  const p = State.positions.find(x => x.id === currentRollTradeId);
+  if (!p) return;
+  const data = ensureChainForTicker(p.ticker);
+  const optType = p.strategy === 'CSP' ? 'put' : 'call';
+  const currentStrike = Number(String(p.strikes).split('/')[0]);
+  const newExp = document.getElementById('rollNewExp').value;
+  const newStrike = parseFloat(document.getElementById('rollNewStrike').value);
+  if (!newExp || !newStrike) { toast('Select new expiry and strike', 'error'); return; }
+
+  const curOpt = data.chain.find(o => o.expiration === p.expiry && o.strike === currentStrike && o.type === optType);
+  const newOpt = data.chain.find(o => o.expiration === newExp && o.strike === newStrike && o.type === optType);
+  if (!newOpt) { toast('New leg not found in chain', 'error'); return; }
+  const curBuybackPer = curOpt ? (curOpt.bid + curOpt.ask) / 2 : Math.max(p.premium * 0.5, 0.05);
+  const newCreditPer = (newOpt.bid + newOpt.ask) / 2;
+
+  // 1. Close current position as "rolled"
+  p.closed = true;
+  p.closePrice = curBuybackPer;
+  p.outcome = 'rolled';
+  p.closedAt = new Date().toISOString();
+  p.netPnl = (p.premium - curBuybackPer) * p.contracts * 100;
+
+  // 2. Create new position linked to parent
+  const newTrade = {
+    id: 't_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    ticker: p.ticker,
+    strategy: p.strategy,
+    strikes: String(newStrike),
+    expiry: newExp,
+    premium: Math.round(newCreditPer * 100) / 100,
+    contracts: p.contracts,
+    capital: p.strategy === 'CSP' ? newStrike * 100 * p.contracts : p.capital,
+    delta: newOpt.delta,
+    opened: new Date().toISOString(),
+    closed: false,
+    rolledFrom: p.id,
+    notes: `Rolled from ${p.ticker} ${p.strategy} ${p.strikes} ${fmt.shortDate(p.expiry)}`,
+  };
+  State.positions.push(newTrade);
+
+  Storage.savePositions();
+  closeModal('rollModal');
+  renderPositions();
+  renderJournal();
+  updatePortfolioBar();
+  if (State.currentData) renderSnapshot();
+  toast(`Rolled ${p.ticker} ${p.strategy} to ${fmt.usd(newStrike)} ${fmt.shortDate(newExp)}`);
+}
+
+function deletePosition(id) {
+  if (!confirm('Delete this trade record?')) return;
+  State.positions = State.positions.filter(p => p.id !== id);
+  Storage.savePositions();
+  renderPositions();
+  renderJournal();
+  updatePortfolioBar();
+}
+
+function clearTrades() {
+  if (!confirm('Clear the ENTIRE trade journal? This wipes all open and closed trades.')) return;
+  State.positions = [];
+  Storage.savePositions();
+  renderPositions();
+  renderJournal();
+  updatePortfolioBar();
+  toast('Journal cleared');
+}
+
+function exportTrades() {
+  const data = JSON.stringify(State.positions, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `optionflow-trades-${fmt.date(new Date())}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Trades exported');
+}
+
+function openSettings() { document.getElementById('settingsModal').classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// ---------- ANALYTICS ----------
+function computeAnalytics(year) {
+  const all = State.positions || [];
+  const open = all.filter(p => !p.closed);
+  const closed = all.filter(p => p.closed);
+
+  // Year filter for closed trades (uses closedAt); open trades always shown
+  const yClosed = year === 'all' ? closed : closed.filter(p => {
+    const d = p.closedAt ? new Date(p.closedAt).getFullYear() : null;
+    return String(d) === String(year);
+  });
+
+  // Open portfolio
+  const openPremium = open.reduce((s, p) => s + (p.premium || 0) * (p.contracts || 0) * 100, 0);
+  const openCapital = open.reduce((s, p) => {
+    if (p.strategy === 'CSP') return s + (Number(String(p.strikes).split('/')[0]) || 0) * 100 * (p.contracts || 0);
+    return s + (p.capital || 0);
+  }, 0);
+
+  // Realized
+  const wins = yClosed.filter(p => (p.netPnl || 0) > 0);
+  const losses = yClosed.filter(p => (p.netPnl || 0) < 0);
+  const rolled = yClosed.filter(p => p.outcome === 'rolled');
+  const realizedPnl = yClosed.reduce((s, p) => s + (p.netPnl || 0), 0);
+  const premiumKept = wins.reduce((s, p) => s + (p.netPnl || 0), 0);
+  const premiumLost = Math.abs(losses.reduce((s, p) => s + (p.netPnl || 0), 0));
+  const winRate = yClosed.length ? wins.length / yClosed.length * 100 : 0;
+  const avgWin = wins.length ? wins.reduce((s, p) => s + p.netPnl, 0) / wins.length : 0;
+  const avgLoss = losses.length ? losses.reduce((s, p) => s + p.netPnl, 0) / losses.length : 0;
+  const biggestWin = wins.reduce((m, p) => Math.max(m, p.netPnl), 0);
+  const biggestLoss = losses.reduce((m, p) => Math.min(m, p.netPnl), 0);
+
+  // Group by strategy
+  const byStrat = {};
+  yClosed.forEach(p => {
+    const k = p.strategy || '?';
+    byStrat[k] = byStrat[k] || { count: 0, pnl: 0, wins: 0 };
+    byStrat[k].count++;
+    byStrat[k].pnl += p.netPnl || 0;
+    if ((p.netPnl || 0) > 0) byStrat[k].wins++;
+  });
+
+  // Group by ticker (top 10 by absolute P/L)
+  const byTicker = {};
+  yClosed.forEach(p => {
+    const k = p.ticker || '?';
+    byTicker[k] = byTicker[k] || { count: 0, pnl: 0 };
+    byTicker[k].count++;
+    byTicker[k].pnl += p.netPnl || 0;
+  });
+  const tickerRows = Object.entries(byTicker).map(([t, v]) => ({ ticker: t, ...v }))
+    .sort((a, b) => Math.abs(b.pnl) - Math.abs(a.pnl)).slice(0, 10);
+
+  // Monthly (within year)
+  const monthly = Array(12).fill(0).map(() => ({ pnl: 0, count: 0 }));
+  yClosed.forEach(p => {
+    if (!p.closedAt) return;
+    const m = new Date(p.closedAt).getMonth();
+    monthly[m].pnl += p.netPnl || 0;
+    monthly[m].count++;
+  });
+
+  return { open, closed, yClosed, openPremium, openCapital, realizedPnl, premiumKept, premiumLost,
+    winRate, avgWin, avgLoss, biggestWin, biggestLoss, winCount: wins.length, lossCount: losses.length,
+    rolledCount: rolled.length, byStrat, tickerRows, monthly };
+}
+
+function computeItalianTax(year) {
+  // 26% on net realized gains (redditi diversi), with losses carryforward up to 4 years
+  const all = State.positions || [];
+  const closedByYear = {};
+  all.filter(p => p.closed && p.closedAt).forEach(p => {
+    const y = new Date(p.closedAt).getFullYear();
+    closedByYear[y] = (closedByYear[y] || 0) + (p.netPnl || 0);
+  });
+
+  const years = Object.keys(closedByYear).map(Number).sort();
+  // Run forward through years, maintaining loss carryforward (expires after 4 yrs)
+  let carry = []; // {year, amount} — amount is positive loss amount remaining
+  const history = {};
+  for (const y of years) {
+    const net = closedByYear[y];
+    // Drop losses older than 4 yrs
+    carry = carry.filter(c => y - c.year <= 4);
+    let taxableGain = 0, usedCarry = 0;
+    if (net > 0) {
+      let remaining = net;
+      for (const c of carry) {
+        if (remaining <= 0) break;
+        const use = Math.min(remaining, c.amount);
+        c.amount -= use;
+        remaining -= use;
+        usedCarry += use;
+      }
+      carry = carry.filter(c => c.amount > 0);
+      taxableGain = remaining;
+    } else if (net < 0) {
+      carry.push({ year: y, amount: -net });
+    }
+    const tax = taxableGain * 0.26;
+    const netAfterTax = net - tax;
+    history[y] = { grossPnl: net, taxableGain, usedCarry, tax, netAfterTax, carryRemaining: carry.reduce((s, c) => s + c.amount, 0) };
+  }
+
+  const currentYear = year === 'all' ? new Date().getFullYear() : Number(year);
+  const cur = history[currentYear] || { grossPnl: 0, taxableGain: 0, usedCarry: 0, tax: 0, netAfterTax: 0, carryRemaining: (carry.reduce((s, c) => s + c.amount, 0)) };
+  return { currentYear, history, current: cur, carry };
+}
+
+function renderAnalytics() {
+  // Populate year selector
+  const ySel = document.getElementById('analyticsYear');
+  if (ySel) {
+    const years = [...new Set(State.positions.filter(p => p.closedAt).map(p => new Date(p.closedAt).getFullYear()))].sort((a, b) => b - a);
+    const cur = new Date().getFullYear();
+    if (!years.includes(cur)) years.unshift(cur);
+    const currentSel = ySel.value || String(cur);
+    ySel.innerHTML = [...years, 'all'].map(y => `<option value="${y}" ${String(y) === currentSel ? 'selected' : ''}>${y === 'all' ? 'All time' : y}</option>`).join('');
+  }
+  const year = ySel ? ySel.value : String(new Date().getFullYear());
+  const a = computeAnalytics(year);
+  const t = computeItalianTax(year);
+
+  const wrap = document.getElementById('analyticsContainer');
+  if (!a.open.length && !a.yClosed.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="big">📊</div><div class="msg">No data yet — open some trades or import an IBKR statement first.</div></div>`;
+    return;
+  }
+
+  const card = (label, val, cls = '', sub = '') =>
+    `<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-val ${cls}">${val}</div>${sub ? `<div class="stat-sub">${sub}</div>` : ''}</div>`;
+
+  const monthLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const maxAbs = Math.max(1, ...a.monthly.map(m => Math.abs(m.pnl)));
+  const monthlyBars = a.monthly.map((m, i) => {
+    const h = Math.abs(m.pnl) / maxAbs * 60;
+    const cls = m.pnl >= 0 ? 'g' : 'r';
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px">
+      <div style="height:64px;display:flex;flex-direction:column-reverse;justify-content:flex-start">
+        <div style="width:22px;height:${h}px;background:var(--accent-${m.pnl>=0?'green':'red'});opacity:${m.count?0.85:0.2};border-radius:2px"></div>
+      </div>
+      <div style="color:var(--text-dim)">${monthLabels[i]}</div>
+      <div class="${cls}" style="font-size:9px">${m.count ? fmt.usd(m.pnl) : '—'}</div>
+    </div>`;
+  }).join('');
+
+  const stratRows = Object.entries(a.byStrat).map(([k, v]) => `
+    <tr><td>${k}</td><td>${v.count}</td><td>${v.wins}/${v.count} (${(v.count?v.wins/v.count*100:0).toFixed(0)}%)</td>
+    <td class="${v.pnl>=0?'g':'r'}">${fmt.usd(v.pnl)}</td></tr>`).join('');
+
+  const tickerRows = a.tickerRows.map(r => `
+    <tr><td><strong>${r.ticker}</strong></td><td>${r.count}</td>
+    <td class="${r.pnl>=0?'g':'r'}">${fmt.usd(r.pnl)}</td></tr>`).join('');
+
+  const rollRows = a.closed.filter(p => p.outcome === 'rolled').slice(-5).reverse().map(p => `
+    <tr><td>${p.ticker} ${p.strategy} ${p.strikes}</td><td>${fmt.shortDate(p.expiry)}</td>
+    <td class="${p.netPnl>=0?'g':'r'}">${fmt.usd(p.netPnl||0)}</td></tr>`).join('');
+
+  // Italian tax history table
+  const taxHistRows = Object.entries(t.history).sort((a,b)=>b[0]-a[0]).map(([y, h]) => `
+    <tr><td>${y}</td>
+    <td class="${h.grossPnl>=0?'g':'r'}">${fmt.usd(h.grossPnl)}</td>
+    <td>${fmt.usd(h.usedCarry)}</td>
+    <td class="${h.taxableGain>0?'g':''}">${fmt.usd(h.taxableGain)}</td>
+    <td class="r">${fmt.usd(h.tax)}</td>
+    <td class="${h.netAfterTax>=0?'g':'r'}"><strong>${fmt.usd(h.netAfterTax)}</strong></td>
+    <td>${fmt.usd(h.carryRemaining)}</td></tr>`).join('');
+
+  wrap.innerHTML = `
+    <div class="stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px">
+      ${card('OPEN POSITIONS', a.open.length, '', `${fmt.usd(a.openPremium)} premium @ open`)}
+      ${card('CAPITAL AT RISK', fmt.usd(a.openCapital), '', 'CSP collateral + spread BPR')}
+      ${card('REALIZED P&L', fmt.usd(a.realizedPnl), a.realizedPnl>=0?'g':'r', `${a.yClosed.length} closed trades`)}
+      ${card('WIN RATE', a.winRate.toFixed(0)+'%', a.winRate>=70?'g':'', `${a.winCount}W / ${a.lossCount}L · ${a.rolledCount} rolled`)}
+    </div>
+
+    <div class="stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:20px">
+      ${card('PREMIUM KEPT', fmt.usd(a.premiumKept), 'g', 'on winning trades')}
+      ${card('PREMIUM LOST', fmt.usd(a.premiumLost), 'r', 'paid back on losses')}
+      ${card('AVG WINNER', fmt.usd(a.avgWin), 'g')}
+      ${card('AVG LOSER', fmt.usd(a.avgLoss), 'r')}
+      ${card('BIGGEST WIN', fmt.usd(a.biggestWin), 'g')}
+      ${card('BIGGEST LOSS', fmt.usd(a.biggestLoss), 'r')}
+    </div>
+
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="section" style="padding:14px;margin:0">
+        <div style="font-size:11px;text-transform:uppercase;color:var(--text-secondary);letter-spacing:0.5px;margin-bottom:10px">Monthly Realized P&L · ${year}</div>
+        <div style="display:flex;gap:4px;align-items:flex-end">${monthlyBars}</div>
+      </div>
+
+      <div class="section" style="padding:14px;margin:0;border-left:3px solid #2ECC71">
+        <div style="font-size:11px;text-transform:uppercase;color:#2ECC71;letter-spacing:0.5px;margin-bottom:10px;display:flex;justify-content:space-between">
+          <span>🇮🇹 Italian Tax · 26% Capitale</span><span style="color:var(--text-dim);font-size:10px">${t.currentYear}</span>
+        </div>
+        <div style="font-family:var(--mono);font-size:12px;line-height:2">
+          <div>Gross realized: <strong class="${t.current.grossPnl>=0?'g':'r'}">${fmt.usd(t.current.grossPnl)}</strong></div>
+          <div>Loss carryforward used: <strong>${fmt.usd(t.current.usedCarry)}</strong></div>
+          <div>Taxable base: <strong>${fmt.usd(t.current.taxableGain)}</strong></div>
+          <div style="border-top:1px solid var(--border);padding-top:6px;margin-top:4px">
+            Tax owed (26%): <strong class="r">${fmt.usd(t.current.tax)}</strong>
+          </div>
+          <div style="font-size:14px">Net after tax: <strong class="${t.current.netAfterTax>=0?'g':'r'}">${fmt.usd(t.current.netAfterTax)}</strong></div>
+          <div style="color:var(--text-dim);font-size:10px;margin-top:6px">Carry-forward remaining: ${fmt.usd(t.current.carryRemaining)} (expires 4 yrs)</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="section" style="padding:14px;margin:0">
+        <div style="font-size:11px;text-transform:uppercase;color:var(--text-secondary);letter-spacing:0.5px;margin-bottom:10px">By Strategy</div>
+        <div class="table-wrap"><table><thead><tr><th>Strat</th><th>N</th><th>Win</th><th>P&L</th></tr></thead><tbody>${stratRows || '<tr><td colspan="4" style="color:var(--text-dim)">No closed trades</td></tr>'}</tbody></table></div>
+      </div>
+      <div class="section" style="padding:14px;margin:0">
+        <div style="font-size:11px;text-transform:uppercase;color:var(--text-secondary);letter-spacing:0.5px;margin-bottom:10px">Top Tickers by |P&L|</div>
+        <div class="table-wrap"><table><thead><tr><th>Ticker</th><th>N</th><th>P&L</th></tr></thead><tbody>${tickerRows || '<tr><td colspan="3" style="color:var(--text-dim)">No closed trades</td></tr>'}</tbody></table></div>
+      </div>
+    </div>
+
+    <div class="section" style="padding:14px;margin:0 0 20px 0">
+      <div style="font-size:11px;text-transform:uppercase;color:var(--text-secondary);letter-spacing:0.5px;margin-bottom:10px">Italian Tax History · All Years</div>
+      <div class="table-wrap"><table><thead><tr><th>Year</th><th>Gross P&L</th><th>Carry used</th><th>Taxable</th><th>Tax (26%)</th><th>Net</th><th>Carry left</th></tr></thead><tbody>${taxHistRows || '<tr><td colspan="7" style="color:var(--text-dim)">No tax history</td></tr>'}</tbody></table></div>
+    </div>
+
+    <div id="monthlyDetailPanel"></div>
+  `;
+  renderMonthlyDetail();
+}
+
+function renderMonthlyDetail() {
+  const wrap = document.getElementById('monthlyDetailPanel');
+  if (!wrap) return;
+  const months = tradeMonths();
+  if (!months.length) { wrap.innerHTML = ''; return; }
+  const sel = State.analyticsMonth || months[0];
+  const monthOpts = months.map(m => `<option value="${m}" ${m===sel?'selected':''}>${new Date(m+'-01').toLocaleDateString('en',{month:'long',year:'numeric'})}</option>`).join('');
+
+  const inMonth = (d) => d && new Date(d).toISOString().slice(0,7) === sel;
+  const opened = State.positions.filter(p => inMonth(p.opened || p.openedAt));
+  const closed = State.positions.filter(p => inMonth(p.closedAt));
+
+  const openedPrem = opened.reduce((s,p) => s + (p.premium||0)*(p.contracts||0)*100, 0);
+  const realized = closed.reduce((s,p) => s + (p.netPnl||0), 0);
+  const wins = closed.filter(p => (p.netPnl||0) > 0);
+  const losses = closed.filter(p => (p.netPnl||0) < 0);
+  const winSum = wins.reduce((s,p) => s + p.netPnl, 0);
+  const lossSum = Math.abs(losses.reduce((s,p) => s + p.netPnl, 0));
+  const wr = closed.length ? wins.length/closed.length*100 : 0;
+  const tx = computeMonthTaxView(sel);
+
+  // Daily cumulative P&L within month
+  const [yr, mo] = sel.split('-').map(Number);
+  const daysInMonth = new Date(yr, mo, 0).getDate();
+  const dailyPnl = Array(daysInMonth).fill(0);
+  closed.forEach(p => {
+    const d = new Date(p.closedAt).getDate();
+    dailyPnl[d-1] += p.netPnl || 0;
+  });
+  let cum = 0;
+  const cumSeries = dailyPnl.map(v => (cum += v));
+  const maxAbs = Math.max(1, ...cumSeries.map(Math.abs));
+  const W = 600, H = 80;
+  const points = cumSeries.map((v, i) => {
+    const x = (i / (daysInMonth - 1)) * W;
+    const y = H/2 - (v / maxAbs) * (H/2 - 4);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const finalCls = realized >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+  const sparkSvg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:80px;display:block">
+    <line x1="0" y1="${H/2}" x2="${W}" y2="${H/2}" stroke="var(--border)" stroke-width="1" stroke-dasharray="2,3"/>
+    <polyline points="${points}" fill="none" stroke="${finalCls}" stroke-width="2"/>
+  </svg>`;
+
+  const tradeRow = (p, closedView) => {
+    const dt = closedView ? p.closedAt : (p.opened || p.openedAt);
+    const dtStr = dt ? new Date(dt).toLocaleDateString('en',{month:'short',day:'numeric'}) : '—';
+    const pnl = closedView ? (p.netPnl||0) : (p.premium||0)*(p.contracts||0)*100;
+    const cls = pnl >= 0 ? 'g' : 'r';
+    return `<tr><td>${dtStr}</td><td><strong>${p.ticker}</strong></td><td>${p.strategy}</td><td>${p.strikes}</td><td class="right">${p.contracts}</td><td class="right ${cls}">${fmt.usd(pnl)}</td>${closedView?`<td>${p.outcome||'closed'}</td>`:'<td>open</td>'}</tr>`;
+  };
+  const closedRows = closed.slice().sort((a,b)=>new Date(a.closedAt)-new Date(b.closedAt)).map(p=>tradeRow(p,true)).join('');
+  const openedRows = opened.slice().sort((a,b)=>new Date(a.opened||a.openedAt)-new Date(b.opened||b.openedAt)).map(p=>tradeRow(p,false)).join('');
+
+  wrap.innerHTML = `
+    <div class="section" style="padding:14px;margin:0 0 20px 0">
+      <div class="section-header" style="margin-bottom:14px">
+        <div>
+          <div class="section-title" style="font-size:14px;color:var(--text-primary)">📅 Monthly Detail</div>
+          <div class="section-subtitle">Trades opened & closed in the selected month, with cumulative P&L curve</div>
+        </div>
+        <select onchange="State.analyticsMonth=this.value;renderMonthlyDetail()" style="padding:6px 10px;background:var(--bg-2);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;font-family:var(--mono);font-size:12px">${monthOpts}</select>
+      </div>
+
+      <div class="stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px">
+        <div class="stat-card"><div class="stat-label">OPENED</div><div class="stat-val">${opened.length}</div><div class="stat-sub">${fmt.usd(openedPrem)} credit</div></div>
+        <div class="stat-card"><div class="stat-label">CLOSED</div><div class="stat-val">${closed.length}</div><div class="stat-sub">${wins.length}W / ${losses.length}L</div></div>
+        <div class="stat-card"><div class="stat-label">REALIZED THIS MONTH</div><div class="stat-val ${realized>=0?'g':'r'}">${fmt.usd(realized)}</div><div class="stat-sub">${wr.toFixed(0)}% win rate</div></div>
+        <div class="stat-card"><div class="stat-label">WINS / LOSSES</div><div class="stat-val"><span class="g">${fmt.usd(winSum)}</span> <span style="color:var(--text-dim)">/</span> <span class="r">-${fmt.usd(lossSum)}</span></div></div>
+        <div class="stat-card"><div class="stat-label">YTD GROSS · ${tx.year}</div><div class="stat-val ${tx.ytdGrossEnd>=0?'g':'r'}">${fmt.usd(tx.ytdGrossEnd)}</div><div class="stat-sub">Jan 1 → end of month</div></div>
+        <div class="stat-card" style="border-left:3px solid #2ECC71"><div class="stat-label">🇮🇹 MARGINAL TAX (26%)</div><div class="stat-val r">${fmt.usd(tx.marginalTax)}</div><div class="stat-sub">${tx.marginalTax > 0 ? `YTD tax owed: ${fmt.usd(tx.ytdTaxOwed)}` : 'offset by prior losses · YTD: '+fmt.usd(tx.ytdTaxOwed)}</div></div>
+        <div class="stat-card" style="border-left:3px solid #2ECC71"><div class="stat-label">NET AFTER TAX</div><div class="stat-val ${tx.netAfterTaxThisMonth>=0?'g':'r'}">${fmt.usd(tx.netAfterTaxThisMonth)}</div><div class="stat-sub">YTD net: ${fmt.usd(tx.netAfterTaxYtd)}</div></div>
+      </div>
+
+      <div style="background:var(--bg-2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;margin-bottom:14px">
+        <div style="font-size:10px;text-transform:uppercase;color:var(--text-secondary);letter-spacing:0.5px;margin-bottom:6px">Cumulative P&L · day-by-day</div>
+        ${sparkSvg}
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:4px">
+          <span>Day 1</span><span>Day ${Math.ceil(daysInMonth/2)}</span><span>Day ${daysInMonth}</span>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div>
+          <div style="font-size:11px;text-transform:uppercase;color:var(--text-secondary);letter-spacing:0.5px;margin-bottom:6px">Opened (${opened.length})</div>
+          <div class="table-wrap"><table><thead><tr><th>Date</th><th>Ticker</th><th>Strat</th><th>Strike</th><th class="right">Ct</th><th class="right">Credit</th><th>Status</th></tr></thead><tbody>${openedRows || '<tr><td colspan="7" style="color:var(--text-dim);padding:10px;text-align:center">None</td></tr>'}</tbody></table></div>
+        </div>
+        <div>
+          <div style="font-size:11px;text-transform:uppercase;color:var(--text-secondary);letter-spacing:0.5px;margin-bottom:6px">Closed (${closed.length})</div>
+          <div class="table-wrap"><table><thead><tr><th>Date</th><th>Ticker</th><th>Strat</th><th>Strike</th><th class="right">Ct</th><th class="right">P&L</th><th>Outcome</th></tr></thead><tbody>${closedRows || '<tr><td colspan="7" style="color:var(--text-dim);padding:10px;text-align:center">None</td></tr>'}</tbody></table></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ---------- IBKR CSV IMPORTER ----------
+function initImportTab() {
+  const drop = document.getElementById('importDrop');
+  if (!drop || drop.dataset.wired) return;
+  drop.dataset.wired = '1';
+  drop.addEventListener('click', () => document.getElementById('importFile').click());
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.style.borderColor = 'var(--accent-blue)'; });
+  drop.addEventListener('dragleave', () => drop.style.borderColor = 'var(--border)');
+  drop.addEventListener('drop', (e) => {
+    e.preventDefault();
+    drop.style.borderColor = 'var(--border)';
+    if (e.dataTransfer.files[0]) handleImportFile(e.dataTransfer.files[0]);
+  });
+}
+
+function handleImportFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => parseAndPreviewIBKR(e.target.result, file.name);
+  reader.readAsText(file);
+}
+
+// Parse a CSV line honoring double-quoted fields (handles commas inside quotes and "" escapes)
+function csvSplit(line) {
+  const out = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQ) {
+      if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
+      else if (c === '"') inQ = false;
+      else cur += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ',') { out.push(cur); cur = ''; }
+      else cur += c;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+// IBKR option symbol: "SOFI 27MAR26 16.5 P"  →  { ticker, expiry:YYYY-MM-DD, strike, type }
+function parseIbkrOptionSymbol(sym) {
+  const m = sym.trim().match(/^(\S+)\s+(\d{1,2})([A-Z]{3})(\d{2})\s+([\d.]+)\s+([CP])$/);
+  if (!m) return null;
+  const months = { JAN:'01',FEB:'02',MAR:'03',APR:'04',MAY:'05',JUN:'06',JUL:'07',AUG:'08',SEP:'09',OCT:'10',NOV:'11',DEC:'12' };
+  const [, ticker, dd, mmm, yy, strike, cp] = m;
+  const mm = months[mmm];
+  if (!mm) return null;
+  return {
+    ticker,
+    expiry: `20${yy}-${mm}-${dd.padStart(2,'0')}`,
+    strike: parseFloat(strike),
+    type: cp === 'P' ? 'put' : 'call'
+  };
+}
+
+function parseAndPreviewIBKR(text, filename) {
+  const lines = text.split(/\r?\n/).filter(Boolean);
+  const rows = lines.map(csvSplit);
+
+  // --- Trades section (Equity and Index Options) ---
+  const tradeHeaders = [];
+  const optionTrades = [];
+  rows.forEach(r => {
+    if (r[0] === 'Trades' && r[1] === 'Header') {
+      tradeHeaders.length = 0;
+      r.forEach((v, i) => tradeHeaders[i] = v);
+    }
+    if (r[0] === 'Trades' && r[1] === 'Data' && r[2] === 'Order' && r[3] === 'Equity and Index Options') {
+      const rec = {};
+      r.forEach((v, i) => rec[tradeHeaders[i] || `c${i}`] = v);
+      optionTrades.push(rec);
+    }
+  });
+
+  // --- Open Positions section (Equity and Index Options) ---
+  const openHeaders = [];
+  const openOptPos = [];
+  rows.forEach(r => {
+    if (r[0] === 'Open Positions' && r[1] === 'Header') {
+      openHeaders.length = 0;
+      r.forEach((v, i) => openHeaders[i] = v);
+    }
+    if (r[0] === 'Open Positions' && r[1] === 'Data' && r[3] === 'Equity and Index Options') {
+      const rec = {};
+      r.forEach((v, i) => rec[openHeaders[i] || `c${i}`] = v);
+      openOptPos.push(rec);
+    }
+  });
+
+  // Build trade proposals
+  const proposals = [];
+
+  // Pre-pass: per-symbol queue of opening trades (FIFO) so we can match opens to closes
+  const symbolOpens = {}; // symbol → [{date, price, qty}]
+  // Sort all option trades by date ascending so opens are processed first
+  const sortedTrades = optionTrades.slice().sort((a, b) =>
+    String(a['Date/Time']).localeCompare(String(b['Date/Time']))
+  );
+  sortedTrades.forEach(t => {
+    const code = (t['Code'] || '').trim();
+    const codes = code.split(/[;\s]+/);
+    const sym = t['Symbol'];
+    const dateStr = (t['Date/Time'] || '').replace(',', '').trim().slice(0,10);
+    const qty = Math.abs(parseFloat(t['Quantity'] || '0'));
+    const price = Math.abs(parseFloat(t['T. Price'] || '0'));
+    if (codes.includes('O')) {
+      symbolOpens[sym] = symbolOpens[sym] || [];
+      symbolOpens[sym].push({ date: dateStr, price, qty });
+    }
+  });
+
+  // Closed trades: from Trades rows where Code contains 'C' and RealizedP/L is non-zero
+  optionTrades.forEach(t => {
+    const code = (t['Code'] || '').trim();
+    const realized = parseFloat(t['Realized P/L'] || '0');
+    if (code.split(/[;\s]+/).includes('C') && Math.abs(realized) > 0.0001) {
+      const parsed = parseIbkrOptionSymbol(t['Symbol']);
+      if (!parsed) return;
+      const qty = Math.abs(parseFloat(t['Quantity'] || '0'));
+      const closePrice = Math.abs(parseFloat(t['T. Price'] || '0'));
+      // Back-compute the original open premium per contract: realized = (premium - closePrice) * qty * 100
+      const premiumPer = qty > 0 ? closePrice + realized / (qty * 100) : 0;
+      const dateStr = (t['Date/Time'] || '').replace(',', '').trim().slice(0,10);
+      // Try to match this close against earlier opens (FIFO) for this symbol → get real open date
+      let openDate = dateStr;
+      const opens = symbolOpens[t['Symbol']];
+      if (opens && opens.length) {
+        let need = qty;
+        const used = [];
+        while (need > 0 && opens.length) {
+          const o = opens[0];
+          const take = Math.min(need, o.qty);
+          used.push(o.date);
+          o.qty -= take; need -= take;
+          if (o.qty <= 0.00001) opens.shift();
+        }
+        if (used.length) openDate = used[0]; // earliest opening date
+      }
+      proposals.push({
+        kind: 'closed',
+        ticker: parsed.ticker,
+        strategy: parsed.type === 'put' ? 'CSP' : 'CC',
+        strikes: String(parsed.strike),
+        expiry: parsed.expiry,
+        contracts: qty,
+        premium: Math.max(0, premiumPer),
+        closePrice,
+        netPnl: realized,
+        closedAt: dateStr,
+        openedAt: openDate,
+        outcome: 'closed',
+        note: `Imported from ${filename}`,
+      });
+    }
+  });
+
+  // Open positions → from Open Positions section (short = negative qty)
+  openOptPos.forEach(o => {
+    const parsed = parseIbkrOptionSymbol(o['Symbol']);
+    if (!parsed) return;
+    const qty = parseFloat(o['Quantity'] || '0');
+    if (qty >= 0) return; // only short positions
+    const costPrice = Math.abs(parseFloat(o['Cost Price'] || '0'));
+    proposals.push({
+      kind: 'open',
+      ticker: parsed.ticker,
+      strategy: parsed.type === 'put' ? 'CSP' : 'CC',
+      strikes: String(parsed.strike),
+      expiry: parsed.expiry,
+      contracts: Math.abs(qty),
+      premium: costPrice,
+      capital: parsed.type === 'put' ? parsed.strike * 100 * Math.abs(qty) : 0,
+      note: `Imported from ${filename}`,
+    });
+  });
+
+  renderImportPreview(proposals, filename);
+}
+
+let _importProposals = [];
+function renderImportPreview(props, filename) {
+  _importProposals = props;
+  const out = document.getElementById('importResult');
+  if (!props.length) {
+    out.innerHTML = `<div class="modal-info" style="border-left-color:var(--accent-red)">No options trades detected in <strong>${filename}</strong>. The file may not have a Trades or Open Positions section with equity options.</div>`;
+    return;
+  }
+  const openCount = props.filter(p => p.kind === 'open').length;
+  const closedCount = props.filter(p => p.kind === 'closed').length;
+  const rows = props.map((p, i) => `
+    <tr>
+      <td><input type="checkbox" class="import-chk" data-i="${i}" checked></td>
+      <td><span class="pill ${p.kind==='open'?'pill-blue':'pill-gray'}" style="font-size:10px">${p.kind}</span></td>
+      <td><strong>${p.ticker}</strong></td>
+      <td>${p.strategy}</td>
+      <td>${p.strikes}</td>
+      <td>${fmt.shortDate(p.expiry)}</td>
+      <td>${p.contracts}</td>
+      <td>${p.premium ? fmt.usd(p.premium) : '—'}</td>
+      <td class="${(p.netPnl||0)>=0?'g':'r'}">${p.netPnl != null ? fmt.usd(p.netPnl) : '—'}</td>
+      <td>${p.closedAt || p.note || ''}</td>
+    </tr>`).join('');
+  out.innerHTML = `
+    <div class="modal-info" style="border-left-color:var(--accent-blue);margin-bottom:12px">
+      Parsed <strong>${props.length}</strong> trades from <strong>${filename}</strong>: ${openCount} open, ${closedCount} closed.<br>
+      <span style="color:var(--text-dim);font-size:11px">Review below and click Import to add selected trades to the journal. Existing trades with the same ticker/strike/expiry will be skipped.</span>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th><input type="checkbox" id="importAll" checked onchange="document.querySelectorAll('.import-chk').forEach(c=>c.checked=this.checked)"></th>
+        <th>Kind</th><th>Ticker</th><th>Strat</th><th>Strike</th><th>Expiry</th><th>Ct</th><th>Prem</th><th>P&L</th><th>Date / Note</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div class="modal-actions" style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn ghost" onclick="document.getElementById('importResult').innerHTML=''">Cancel</button>
+      <button class="btn primary" onclick="executeImport()">Import Selected</button>
+    </div>`;
+}
+
+function executeImport() {
+  const checks = [...document.querySelectorAll('.import-chk')].filter(c => c.checked).map(c => Number(c.dataset.i));
+  const picked = checks.map(i => _importProposals[i]).filter(Boolean);
+  if (!picked.length) { toast('Nothing selected', 'warn'); return; }
+
+  const keyOf = p => `${p.ticker}|${p.strategy}|${p.strikes}|${p.expiry}|${p.kind==='closed' ? (p.closedAt||'') : 'OPEN'}`;
+  const existing = new Set(State.positions.map(p => keyOf({
+    ticker: p.ticker, strategy: p.strategy, strikes: p.strikes, expiry: p.expiry,
+    kind: p.closed ? 'closed' : 'open', closedAt: p.closedAt ? new Date(p.closedAt).toISOString().slice(0,10) : ''
+  })));
+
+  let added = 0, skipped = 0;
+  picked.forEach(p => {
+    if (existing.has(keyOf(p))) { skipped++; return; }
+    const base = {
+      id: 't_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      ticker: p.ticker, strategy: p.strategy, strikes: p.strikes, expiry: p.expiry,
+      contracts: p.contracts, premium: p.premium || 0,
+      delta: 0, openedAt: new Date().toISOString(),
+      notes: p.note || 'Imported', closed: p.kind === 'closed',
+    };
+    if (p.kind === 'open') base.capital = p.capital || 0;
+    if (p.kind === 'closed') {
+      base.closePrice = p.closePrice || 0;
+      base.netPnl = p.netPnl || 0;
+      base.outcome = p.outcome || 'closed';
+      base.closedAt = p.closedAt ? new Date(p.closedAt).toISOString() : new Date().toISOString();
+      // Use openedAt from import if provided (for closed imports it's the trade date)
+      if (p.openedAt) base.openedAt = new Date(p.openedAt).toISOString();
+    }
+    State.positions.push(base);
+    added++;
+  });
+  Storage.savePositions();
+  renderPositions();
+  renderJournal();
+  updatePortfolioBar();
+  toast(`Imported ${added} trades${skipped?`, skipped ${skipped} duplicates`:''}`);
+  document.getElementById('importResult').innerHTML = `<div class="modal-info" style="border-left-color:#2ECC71">Imported ${added} trades. Skipped ${skipped} duplicates. Check the Journal or Analytics tab.</div>`;
+}
+
+// ---------- INIT ----------
+function init() {
+  Storage.load();
+  renderPositions();
+  renderJournal();
+  updatePortfolioBar();
+
+  const input = document.getElementById('tickerInput');
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const v = input.value.trim().toUpperCase();
+      if (v) loadTicker(v);
+    }
+  });
+
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.classList.remove('active');
+    });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+  });
+
+  setTimeout(() => {
+    input.value = 'SOFI';
+    loadTicker('SOFI');
+  }, 150);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
