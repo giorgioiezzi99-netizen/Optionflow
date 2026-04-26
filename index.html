@@ -1406,21 +1406,33 @@ td.center, th.center { text-align: center; }
 
 <!-- ========== MODALS ========== -->
 <div class="modal-overlay" id="settingsModal">
-  <div class="modal">
+  <div class="modal" style="max-width:520px">
     <div class="modal-header">
-      <div class="modal-title">Settings</div>
+      <div class="modal-title">⚙ Live Data Settings</div>
       <button class="modal-close" onclick="closeModal('settingsModal')">×</button>
     </div>
-    <div class="modal-info">
-      Currently running in <strong style="color:var(--accent-amber)">DEMO MODE</strong> with synthetic data.
-      API integration hooks are ready for future wiring (Tradier, Polygon, Finnhub) but no live connection is active.
+    <div class="modal-info" style="background:var(--bg-2);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:12px;line-height:1.5;margin-bottom:14px">
+      <strong>🟢 Live Mode</strong> uses Finnhub for real-time US stock quotes + news + earnings + analyst recs (free tier, 60 req/min). Option chains are computed from your stock price using Black-Scholes (Finnhub doesn't include option chains on free tier).<br>
+      <span style="color:var(--text-secondary)">Your key is stored in this browser only — never sent to GitHub or shared.</span>
     </div>
     <div class="form-group">
-      <label>Tradier API Token (disabled)</label>
-      <input type="password" id="apiKeyInput" placeholder="Paste later when ready..." disabled>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px">
+        <input type="checkbox" id="liveModeToggle" onchange="toggleLiveMode()" style="width:16px;height:16px;cursor:pointer">
+        <span>Enable Live Mode</span>
+      </label>
     </div>
-    <div class="modal-actions">
-      <button class="btn primary" onclick="closeModal('settingsModal')">OK</button>
+    <div class="form-group" style="margin-bottom:8px">
+      <label style="font-size:12px;color:var(--text-secondary)">Finnhub API Key</label>
+      <input type="password" id="apiKeyInput" placeholder="Paste your Finnhub API key here..." style="width:100%;padding:8px;background:var(--bg-2);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;font-family:var(--mono)">
+      <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">
+        Get a free key at <a href="https://finnhub.io/register" target="_blank" rel="noopener" style="color:#4a9eff">finnhub.io</a> · email signup, no KYC
+      </div>
+    </div>
+    <div id="settingsStatus" style="font-size:12px;padding:8px;border-radius:4px;margin:10px 0;display:none"></div>
+    <div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn ghost btn-sm" onclick="testFinnhub()">🧪 Test Connection</button>
+      <button class="btn ghost btn-sm" onclick="clearLiveSettings()" style="color:var(--accent-red)">Clear Key</button>
+      <button class="btn primary" onclick="saveLiveSettings()">Save</button>
     </div>
   </div>
 </div>
@@ -1688,6 +1700,261 @@ const Storage = {
     localStorage.setItem('of_positions', JSON.stringify(State.positions));
   }
 };
+
+// ---------- LIVE DATA (Finnhub + Yahoo proxy) ----------
+const Live = {
+  enabled() { return localStorage.getItem('of_live_mode') === '1' && !!this.key(); },
+  key() { return localStorage.getItem('of_finnhub_key') || ''; },
+  setKey(k) { localStorage.setItem('of_finnhub_key', k || ''); },
+  setMode(on) { localStorage.setItem('of_live_mode', on ? '1' : '0'); },
+
+  async _fh(path) {
+    const sep = path.includes('?') ? '&' : '?';
+    const url = `https://finnhub.io/api/v1${path}${sep}token=${encodeURIComponent(this.key())}`;
+    const r = await fetch(url);
+    if (r.status === 429) throw new Error('Finnhub rate limit hit (60/min). Wait a moment.');
+    if (r.status === 401 || r.status === 403) throw new Error('Invalid Finnhub API key.');
+    if (!r.ok) throw new Error(`Finnhub ${path} → HTTP ${r.status}`);
+    return r.json();
+  },
+
+  // Real-time US stock quote
+  async quote(ticker) {
+    // c=current, d=change, dp=changePct, h=dayHigh, l=dayLow, o=open, pc=prevClose, t=timestamp
+    return this._fh(`/quote?symbol=${encodeURIComponent(ticker)}`);
+  },
+
+  // Company profile (logo, sector, mcap, ipo, etc.)
+  async profile(ticker) {
+    return this._fh(`/stock/profile2?symbol=${encodeURIComponent(ticker)}`);
+  },
+
+  // Basic financials (P/E, 52w high/low, EPS, etc.)
+  async financials(ticker) {
+    return this._fh(`/stock/metric?symbol=${encodeURIComponent(ticker)}&metric=all`);
+  },
+
+  // Recent company news
+  async news(ticker, days = 7) {
+    const to = new Date().toISOString().slice(0, 10);
+    const from = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+    return this._fh(`/company-news?symbol=${encodeURIComponent(ticker)}&from=${from}&to=${to}`);
+  },
+
+  // Upcoming earnings (next 90d)
+  async earningsCalendar(ticker) {
+    const to = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
+    const from = new Date().toISOString().slice(0, 10);
+    const data = await this._fh(`/calendar/earnings?from=${from}&to=${to}&symbol=${encodeURIComponent(ticker)}`);
+    return (data.earningsCalendar && data.earningsCalendar[0]) || null;
+  },
+
+  // Analyst recommendations (most recent month)
+  async recommendations(ticker) {
+    const arr = await this._fh(`/stock/recommendation?symbol=${encodeURIComponent(ticker)}`);
+    return Array.isArray(arr) && arr.length ? arr[0] : null;
+  },
+
+  // Price target
+  async priceTarget(ticker) {
+    return this._fh(`/stock/price-target?symbol=${encodeURIComponent(ticker)}`);
+  },
+
+  // 6-month daily candles for chart
+  async candles(ticker, days = 180) {
+    // Note: Finnhub /stock/candle is now premium. We use Yahoo via proxy as a free fallback.
+    try {
+      const proxy = 'https://corsproxy.io/?';
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=6mo&interval=1d`;
+      const r = await fetch(proxy + encodeURIComponent(url));
+      if (!r.ok) throw new Error('chart fetch failed');
+      const j = await r.json();
+      const result = j?.chart?.result?.[0];
+      if (!result) return null;
+      const ts = result.timestamp || [];
+      const closes = result.indicators?.quote?.[0]?.close || [];
+      const vols = result.indicators?.quote?.[0]?.volume || [];
+      return ts.map((t, i) => ({
+        date: fmt.date(new Date(t * 1000)),
+        price: closes[i] != null ? Math.round(closes[i] * 100) / 100 : null,
+        volume: vols[i] || 0,
+      })).filter(x => x.price != null);
+    } catch (e) { return null; }
+  },
+};
+
+// Map Finnhub recommendation row → our rating label/score
+function ratingFromFinnhub(rec) {
+  if (!rec) return { label: 'Hold', score: 3.0, count: 0 };
+  const sb = rec.strongBuy || 0, b = rec.buy || 0, h = rec.hold || 0, s = rec.sell || 0, ss = rec.strongSell || 0;
+  const total = sb + b + h + s + ss;
+  if (total === 0) return { label: 'Hold', score: 3.0, count: 0 };
+  // Finnhub uses 1=Strong Buy ... 5=Strong Sell in their scoring
+  const score = (sb * 1 + b * 2 + h * 3 + s * 4 + ss * 5) / total;
+  const label = score < 1.75 ? 'Strong Buy' : score < 2.5 ? 'Buy' : score < 3.5 ? 'Hold' : score < 4.25 ? 'Sell' : 'Strong Sell';
+  return { label, score: Math.round(score * 10) / 10, count: total };
+}
+
+// Build a real Quote object from Finnhub responses (matches synthetic shape)
+async function buildLiveQuote(ticker) {
+  const [q, prof, fin] = await Promise.all([
+    Live.quote(ticker),
+    Live.profile(ticker).catch(() => ({})),
+    Live.financials(ticker).catch(() => ({ metric: {} })),
+  ]);
+  if (!q || !q.c) throw new Error(`No quote returned for ${ticker} — symbol might not exist on Finnhub free tier (try US tickers).`);
+  const m = (fin && fin.metric) || {};
+  // Estimate IV: if 52w volatility metric exists, use it; else fall back to a heuristic
+  const iv52 = m['52WeekPriceReturnDaily'] || m['volatilityAnnualized'] || null;
+  const iv = iv52 && iv52 > 0 ? Math.min(2, Math.max(0.1, iv52 / 100)) : 0.45;
+  // IV rank/percentile crude proxy: where today's price sits in 52w range
+  const hi = m['52WeekHigh'] || q.h || q.c * 1.3;
+  const lo = m['52WeekLow'] || q.l || q.c * 0.7;
+  const pos = hi > lo ? Math.max(0, Math.min(1, (q.c - lo) / (hi - lo))) : 0.5;
+  return {
+    ticker: ticker.toUpperCase(),
+    last: q.c,
+    change: q.d ?? 0,
+    changePct: q.dp ?? 0,
+    iv,
+    ivRank: Math.round((1 - pos) * 100), // proxy: low in range = elevated IV-ish
+    ivPercentile: Math.round((1 - pos) * 100),
+    high52: hi,
+    low52: lo,
+    mcap: prof.marketCapitalization ? prof.marketCapitalization * 1e6 : null,
+    sector: prof.finnhubIndustry || prof.gind || '—',
+    peRatio: m.peTTM || m.peExclExtraTTM || null,
+    logo: prof.logo || null,
+    name: prof.name || ticker.toUpperCase(),
+    exchange: prof.exchange || '—',
+    synthetic: false,
+    live: true,
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+async function buildLiveFundamentals(ticker, quote) {
+  const [earn, rec, ptObj] = await Promise.all([
+    Live.earningsCalendar(ticker).catch(() => null),
+    Live.recommendations(ticker).catch(() => null),
+    Live.priceTarget(ticker).catch(() => null),
+  ]);
+  const today = new Date(); today.setHours(0,0,0,0);
+  let earningsDate = null, daysToEarnings = null, earningsSession = '—', epsEst = null;
+  if (earn && earn.date) {
+    earningsDate = new Date(earn.date + 'T00:00:00');
+    daysToEarnings = Math.round((earningsDate - today) / 86400000);
+    earningsSession = earn.hour === 'amc' ? 'AMC' : earn.hour === 'bmo' ? 'BMO' : '—';
+    epsEst = earn.epsEstimate ?? null;
+  }
+  const r = ratingFromFinnhub(rec);
+  const priceTarget = ptObj && ptObj.targetMean ? ptObj.targetMean : (quote.last * 1.05);
+  const ptUpside = quote.last > 0 ? Math.round(((priceTarget - quote.last) / quote.last) * 1000) / 10 : 0;
+  return {
+    earningsDate, earningsSession,
+    daysToEarnings: daysToEarnings != null ? daysToEarnings : 999,
+    epsEst: epsEst ?? 0,
+    epsBeatRate: 70, // not available on free tier, use generic
+    revEst: 0, revGrowth: 0,
+    rating: r.label, ratingScore: r.score,
+    priceTarget: Math.round(priceTarget * 100) / 100,
+    ptUpside,
+    analystCount: (ptObj && ptObj.numberOfAnalysts) || r.count || 0,
+  };
+}
+
+// ---------- SETTINGS HANDLERS ----------
+function loadSettingsIntoUI() {
+  const k = Live.key();
+  const on = Live.enabled();
+  const inp = document.getElementById('apiKeyInput');
+  const tog = document.getElementById('liveModeToggle');
+  if (inp) inp.value = k;
+  if (tog) tog.checked = on;
+}
+
+function showSettingsStatus(msg, kind) {
+  const el = document.getElementById('settingsStatus');
+  if (!el) return;
+  const colors = { ok: ['#0f3a23', '#00ff88'], err: ['#3a0f1a', '#ff3b5c'], info: ['#0f253a', '#4a9eff'] };
+  const c = colors[kind] || colors.info;
+  el.style.display = 'block';
+  el.style.background = c[0];
+  el.style.color = c[1];
+  el.style.border = `1px solid ${c[1]}33`;
+  el.textContent = msg;
+}
+
+function saveLiveSettings() {
+  const k = (document.getElementById('apiKeyInput')?.value || '').trim();
+  const on = document.getElementById('liveModeToggle')?.checked;
+  Live.setKey(k);
+  Live.setMode(!!on);
+  updateModeBadge();
+  showSettingsStatus(on && k ? '✅ Saved. Live mode active — type a ticker to fetch real data.' : '✅ Saved. Demo mode active.', 'ok');
+  setTimeout(() => closeModal('settingsModal'), 800);
+}
+
+function clearLiveSettings() {
+  Live.setKey('');
+  Live.setMode(false);
+  document.getElementById('apiKeyInput').value = '';
+  document.getElementById('liveModeToggle').checked = false;
+  updateModeBadge();
+  showSettingsStatus('Cleared. Back to demo mode.', 'info');
+}
+
+function toggleLiveMode() {
+  // visual hint only — actual save is via Save button
+  const on = document.getElementById('liveModeToggle')?.checked;
+  const k = (document.getElementById('apiKeyInput')?.value || '').trim();
+  if (on && !k) {
+    showSettingsStatus('⚠️ Enter your Finnhub API key first.', 'err');
+  } else {
+    showSettingsStatus(on ? '🟢 Live mode will activate after Save.' : '🟡 Demo mode will activate after Save.', 'info');
+  }
+}
+
+async function testFinnhub() {
+  const k = (document.getElementById('apiKeyInput')?.value || '').trim();
+  if (!k) { showSettingsStatus('⚠️ Enter your Finnhub API key first.', 'err'); return; }
+  showSettingsStatus('Testing connection to Finnhub…', 'info');
+  try {
+    // temporarily save key to attempt the call
+    const prev = Live.key();
+    Live.setKey(k);
+    const q = await Live.quote('AAPL');
+    Live.setKey(prev); // restore until user clicks Save
+    if (q && q.c > 0) {
+      showSettingsStatus(`✅ Connected! AAPL = $${q.c.toFixed(2)} (${q.dp >= 0 ? '+' : ''}${q.dp.toFixed(2)}%)`, 'ok');
+    } else {
+      showSettingsStatus('⚠️ Connected but no quote returned. Key may be invalid.', 'err');
+    }
+  } catch (e) {
+    showSettingsStatus(`❌ ${e.message}`, 'err');
+  }
+}
+
+function updateModeBadge() {
+  const badge = document.getElementById('modeBadge');
+  const banner = document.getElementById('demoBanner');
+  if (!badge) return;
+  if (Live.enabled()) {
+    badge.textContent = '🟢 LIVE';
+    badge.classList.remove('demo');
+    badge.classList.add('live');
+    badge.style.background = '#0f3a23';
+    badge.style.color = '#00ff88';
+    if (banner) banner.style.display = 'none';
+  } else {
+    badge.textContent = 'DEMO MODE';
+    badge.classList.remove('live');
+    badge.classList.add('demo');
+    badge.style.background = '';
+    badge.style.color = '';
+    if (banner) banner.style.display = '';
+  }
+}
 
 // ---------- UTILITIES ----------
 const fmt = {
@@ -1969,12 +2236,38 @@ async function loadTicker(ticker) {
   document.getElementById('ccSection').style.display = 'block';
   document.getElementById('multilegSection').style.display = 'block';
 
-  const quote = generateQuote(ticker);
-  const chain = generateChain(quote);
-  const fund = generateFundamentals(quote);
-  const history = generatePriceHistory(quote);
+  let quote, chain, fund, history;
+  let liveNews = null;
+  if (Live.enabled()) {
+    try {
+      toast(`🟢 Fetching live data for ${ticker}…`);
+      quote = await buildLiveQuote(ticker);
+      fund = await buildLiveFundamentals(ticker, quote);
+      // Option chain is computed from live spot price using Black-Scholes (Finnhub free has no chains)
+      chain = generateChain(quote);
+      // Real candles from Yahoo proxy; fall back to synthetic if it fails
+      history = await Live.candles(ticker);
+      if (!history || history.length < 5) history = generatePriceHistory(quote);
+      // News (best-effort)
+      Live.news(ticker, 7).then(n => {
+        liveNews = Array.isArray(n) ? n.slice(0, 8) : [];
+        if (State.currentData) { State.currentData.news = liveNews; renderSnapshot(); }
+      }).catch(() => {});
+    } catch (e) {
+      toast(`⚠️ Live fetch failed: ${e.message}. Falling back to demo.`);
+      quote = generateQuote(ticker);
+      chain = generateChain(quote);
+      fund = generateFundamentals(quote);
+      history = generatePriceHistory(quote);
+    }
+  } else {
+    quote = generateQuote(ticker);
+    chain = generateChain(quote);
+    fund = generateFundamentals(quote);
+    history = generatePriceHistory(quote);
+  }
 
-  State.currentData = { quote, chain, fundamentals: fund, history };
+  State.currentData = { quote, chain, fundamentals: fund, history, news: liveNews };
   State.selectedCspExp = null;
   State.selectedCcExp = null;
   State.selectedMlExp = null;
@@ -2059,9 +2352,46 @@ function renderSnapshot() {
     </div>
   `;
 
+  // Live news ribbon (only when live mode has fetched news)
+  renderNewsRibbon();
+
   if (State.chartExpanded) {
     renderExpandedChart();
   }
+}
+
+function renderNewsRibbon() {
+  const wrap = document.getElementById('snapshotWrap');
+  if (!wrap) return;
+  let news = State.currentData?.news;
+  let el = document.getElementById('newsRibbon');
+  if (!news || !news.length) {
+    if (el) el.remove();
+    return;
+  }
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'newsRibbon';
+    el.style.cssText = 'margin-top:14px;background:var(--bg-2);border:1px solid var(--border);border-radius:8px;padding:14px';
+    wrap.appendChild(el);
+  }
+  const items = news.slice(0, 6).map(n => {
+    const dt = n.datetime ? new Date(n.datetime * 1000) : null;
+    const when = dt ? dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+    const headline = (n.headline || '').replace(/[<>]/g, '');
+    const source = (n.source || '').replace(/[<>]/g, '');
+    return `<a href="${n.url}" target="_blank" rel="noopener" style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);text-decoration:none;color:var(--text-primary);font-size:12px">
+      <span style="flex:1;line-height:1.4">${headline}</span>
+      <span style="color:var(--text-secondary);font-family:var(--mono);font-size:11px;white-space:nowrap">${source} · ${when}</span>
+    </a>`;
+  }).join('');
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;font-family:var(--mono)">📰 Latest News (${news.length})</div>
+      <span style="font-size:10px;color:#00ff88;background:#0f3a23;padding:2px 8px;border-radius:10px;font-family:var(--mono)">LIVE</span>
+    </div>
+    <div>${items}</div>
+  `;
 }
 
 function drawSparkline(history) {
@@ -3907,7 +4237,11 @@ function exportTrades() {
   toast('Trades exported');
 }
 
-function openSettings() { document.getElementById('settingsModal').classList.add('active'); }
+function openSettings() {
+  loadSettingsIntoUI();
+  document.getElementById('settingsStatus').style.display = 'none';
+  document.getElementById('settingsModal').classList.add('active');
+}
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
 // ---------- ANALYTICS ----------
@@ -4499,6 +4833,7 @@ function executeImport() {
 // ---------- INIT ----------
 function init() {
   Storage.load();
+  updateModeBadge();
   renderPositions();
   renderJournal();
   updatePortfolioBar();
@@ -4527,7 +4862,23 @@ function init() {
   }, 150);
 }
 
-document.addEventListener('DOMContentLoaded', init);
+// Global error reporter — surfaces silent JS errors visibly
+window.addEventListener('error', (e) => {
+  const banner = document.createElement('div');
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#3a0f1a;color:#ff8c8c;padding:10px;font:12px monospace;z-index:99999;border-bottom:2px solid #ff3b5c;white-space:pre-wrap';
+  banner.textContent = '⚠️ JS ERROR: ' + (e.message || 'unknown') + '\n' + (e.filename || '') + ':' + (e.lineno || '?') + ':' + (e.colno || '?');
+  document.body && document.body.appendChild(banner);
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  try { init(); }
+  catch (err) {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#3a0f1a;color:#ff8c8c;padding:10px;font:12px monospace;z-index:99999;border-bottom:2px solid #ff3b5c;white-space:pre-wrap';
+    banner.textContent = '⚠️ INIT ERROR: ' + err.message + '\n\n' + (err.stack || '').split('\n').slice(0,5).join('\n');
+    document.body.appendChild(banner);
+  }
+});
 </script>
 </body>
 </html>
