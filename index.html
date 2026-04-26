@@ -1292,6 +1292,47 @@ td.center, th.center { text-align: center; }
       </div>
       <div class="exp-pills" id="mlPills"></div>
       <div id="mlForExp"></div>
+
+      <!-- CUSTOM TRADE BUILDER -->
+      <div class="subsection" id="customBuilder" style="margin-top:30px;border-top:1px solid var(--border);padding-top:20px">
+        <div class="subsection-header">
+          <div class="subsection-title">🛠️ Build Your Own Trade</div>
+          <div class="dim" style="font-family:var(--mono);font-size:11px">Pick strikes manually · live payoff & metrics</div>
+        </div>
+        <div class="custom-form" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;background:var(--bg-2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px">
+          <label style="font-size:11px;color:var(--text-secondary);display:flex;flex-direction:column;gap:4px">Strategy
+            <select id="cbTemplate" onchange="applyCustomTemplate()" style="padding:6px;background:var(--bg-1);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;font-family:var(--mono)">
+              <option value="custom">Custom (manual legs)</option>
+              <option value="long_call">Long Call</option>
+              <option value="long_put">Long Put</option>
+              <option value="csp">Cash-Secured Put</option>
+              <option value="cc">Covered Call</option>
+              <option value="pcs">Put Credit Spread</option>
+              <option value="ccs">Call Credit Spread</option>
+              <option value="pds">Put Debit Spread</option>
+              <option value="cds">Call Debit Spread</option>
+              <option value="ic">Iron Condor</option>
+              <option value="strangle">Short Strangle</option>
+              <option value="straddle">Long Straddle</option>
+            </select>
+          </label>
+          <label style="font-size:11px;color:var(--text-secondary);display:flex;flex-direction:column;gap:4px">Expiration
+            <select id="cbExp" onchange="renderCustomLegs()" style="padding:6px;background:var(--bg-1);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;font-family:var(--mono)"></select>
+          </label>
+          <label style="font-size:11px;color:var(--text-secondary);display:flex;flex-direction:column;gap:4px"># Contracts
+            <input type="number" id="cbContracts" min="1" step="1" value="1" oninput="saveContracts();analyzeCustom()" style="padding:6px;background:var(--bg-1);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;font-family:var(--mono)">
+          </label>
+          <label style="font-size:11px;color:var(--text-secondary);display:flex;flex-direction:column;gap:4px">Total Collateral
+            <div id="cbCollateralDisplay" style="padding:6px;background:var(--bg-1);border:1px solid var(--border);color:#4a9eff;border-radius:4px;font-family:var(--mono);font-weight:600">$0.00</div>
+          </label>
+        </div>
+        <div id="cbLegs" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button class="btn btn-sm" onclick="addCustomLeg()">+ Add Leg</button>
+          <button class="btn btn-sm primary" onclick="analyzeCustom()" style="margin-left:auto">⚡ Analyze Trade</button>
+        </div>
+        <div id="cbResult"></div>
+      </div>
     </div>
   </div>
 
@@ -2246,6 +2287,12 @@ function renderSuggestionCards(options, kind, quote) {
     const premLabel = kind === 'CSP' ? 'RoC/mo' : 'Yield/mo';
     const be = kind === 'CSP' ? `<div class="sug-stat"><span class="k">Breakeven</span><span class="v">${fmt.usd(o.breakeven)}</span></div>` :
                                `<div class="sug-stat"><span class="k">If Called</span><span class="v">${fmt.usd(o.callAway)}</span></div>`;
+    // Collateral required (per 1 contract):
+    //   CSP cash-secured = strike × 100  (e.g. $8 put → $800)
+    //   CC = 100 shares × cost basis (or current price if not provided)
+    const collateral = kind === 'CSP' ? o.strike * 100 : (basis || quote.last) * 100;
+    const collLabel = kind === 'CSP' ? 'Collateral' : 'Shares Cost';
+    const collHint = kind === 'CSP' ? `${fmt.usd(o.strike)} × 100` : `${fmt.usd(basis || quote.last)} × 100`;
     return `
       <div class="sug-card ${tier}">
         <div class="sug-tier">${icon} ${label}</div>
@@ -2258,6 +2305,7 @@ function renderSuggestionCards(options, kind, quote) {
           <div class="sug-stat"><span class="k">PoP</span><span class="v">${o.pop.toFixed(0)}%</span></div>
           ${be}
           <div class="sug-stat"><span class="k">% OTM</span><span class="v">${o.pctOtm.toFixed(1)}%</span></div>
+          <div class="sug-stat" title="${collHint}"><span class="k">${collLabel}</span><span class="v" style="color:#4a9eff">${fmt.usd(collateral)}</span></div>
         </div>
         <div class="sug-rationale">${rationale}</div>
         <div class="sug-actions">
@@ -2396,6 +2444,7 @@ function renderCCTable(calls, basis) {
 function buildMLPills() {
   buildExpPills(document.getElementById('mlPills'), 'selectedMlExp', 'selectMlExp', false);
   renderMLForExp();
+  buildCustomBuilder();
 }
 
 function selectMlExp(date) {
@@ -2519,6 +2568,21 @@ function renderMLForExp() {
   })();
 
   const cards = [ic, pcs, str].filter(Boolean);
+  // Add cash collateral for each card (defined-risk = maxLoss, undefined = naked notional)
+  cards.forEach(c => {
+    if (c.cashCollateral == null) {
+      c.cashCollateral = c.maxLoss != null && isFinite(c.maxLoss)
+        ? c.maxLoss
+        : (c.legs ? computeCashCollateral(c.legs, S, c.maxLoss, c.credit || 0) : c.bpr);
+    }
+  });
+  // Apply dynamic tier scoring (overrides hardcoded labels based on actual numbers)
+  cards.forEach(c => {
+    const sc = scoreTrade(c);
+    c.tier = sc.tier;
+    c.icon = sc.icon;
+    c.score = sc.score;
+  });
   if (cards.length === 0) {
     wrap.innerHTML = `<div class="empty-state"><div class="big">—</div><div class="msg">Insufficient liquid strikes for this expiry. Try a different expiration.</div></div>`;
     return;
@@ -2561,7 +2625,8 @@ function mlCard(t, S) {
         <div class="ml-metric"><span class="k">PoP</span><span class="v">${t.pop.toFixed(0)}%</span></div>
         <div class="ml-metric"><span class="k">PoT</span><span class="v a">${t.pot.toFixed(0)}%</span></div>
         <div class="ml-metric"><span class="k">Days to 50%</span><span class="v">${t.days50}d</span></div>
-        <div class="ml-metric"><span class="k">BPR</span><span class="v">${fmt.usd(t.bpr)}</span></div>
+        <div class="ml-metric" title="Cash held back if held to expiry / assigned. For defined-risk = max loss. For naked = strike notional minus premium."><span class="k">Collateral</span><span class="v" style="color:#4a9eff">${fmt.usd(t.cashCollateral != null ? t.cashCollateral : t.bpr)}</span></div>
+        <div class="ml-metric" title="Margin requirement / Buying Power Reduction. For defined-risk = max loss. For naked = ~20% of strike notional (Reg-T estimate)."><span class="k">Margin / BPR</span><span class="v">${fmt.usd(t.bpr)}</span></div>
       </div>
       <div class="ml-greeks">
         <div>NET Δ<span class="greek-val">${t.netDelta.toFixed(2)}</span></div>
@@ -2622,6 +2687,453 @@ function drawPayoff(t, S) {
     <line x1="${sX.toFixed(1)}" y1="${pad}" x2="${sX.toFixed(1)}" y2="${h-pad}" stroke="#4a9eff" stroke-width="1" stroke-dasharray="1 2" opacity="0.7"/>
     <text x="${sX.toFixed(1)}" y="${h-1}" font-family="JetBrains Mono" font-size="8" fill="#4a9eff" text-anchor="middle">${fmt.usd(S, 0)}</text>
   </svg>`;
+}
+
+// ---------- DYNAMIC TIER SCORING ----------
+// Replaces hardcoded conservative/moderate/aggressive labels with a real score
+function scoreTrade(t) {
+  const popN = Math.min(1, Math.max(0, (t.pop || 50) / 100));
+  // RoC normalized: 30%/period = top of scale for credit; 100%+ for debit/long
+  const rocCap = (t.maxLoss == null) ? 60 : 30;
+  const rocN = Math.min(1, Math.max(0, (t.roc || 0) / rocCap));
+  const definedRisk = t.maxLoss != null && isFinite(t.maxLoss);
+  const lossRatio = definedRisk && t.maxProfit > 0 ? Math.min(1, t.maxProfit / Math.max(1, t.maxLoss)) : 0;
+  // Score: 50% PoP, 25% RoC, 15% defined-risk bonus, 10% favorable risk:reward
+  const score = popN * 0.50 + rocN * 0.25 + (definedRisk ? 0.15 : 0) + lossRatio * 0.10;
+  if (score >= 0.65) return { tier: 'conservative', icon: '🟢', score };
+  if (score >= 0.45) return { tier: 'moderate', icon: '🟡', score };
+  return { tier: 'aggressive', icon: '🔴', score };
+}
+
+// ---------- COLLATERAL & CONTRACTS ----------
+function getContracts() {
+  const v = parseInt(document.getElementById('cbContracts')?.value || '1', 10);
+  return isFinite(v) && v > 0 ? v : 1;
+}
+function saveContracts() {
+  const v = getContracts();
+  localStorage.setItem('of_contracts', String(v));
+}
+
+// Cash Collateral: realistic capital tied up to fully secure the trade.
+// CSP $8 → $800 (strike × 100). Spread → width × 100. Iron Condor → max(put side, call side).
+// Naked short call → S × 100 (need 100 shares to cover). Long → debit paid.
+function computeCashCollateral(legs, S, maxLoss, netPremium) {
+  const shortPuts = legs.filter(l => l.type === 'put' && l.action === 'SELL').sort((a,b) => b.strike - a.strike);
+  const longPuts = legs.filter(l => l.type === 'put' && l.action === 'BUY').sort((a,b) => b.strike - a.strike);
+  const shortCalls = legs.filter(l => l.type === 'call' && l.action === 'SELL').sort((a,b) => a.strike - b.strike);
+  const longCalls = legs.filter(l => l.type === 'call' && l.action === 'BUY').sort((a,b) => a.strike - b.strike);
+
+  // PUT side: pair each short put with a lower long put (forms spread). Unpaired = cash-secured.
+  let putCollateral = 0;
+  const usedLP = new Set();
+  for (const sp of shortPuts) {
+    const idx = longPuts.findIndex((lp, i) => !usedLP.has(i) && lp.strike < sp.strike);
+    if (idx >= 0) { putCollateral += (sp.strike - longPuts[idx].strike) * 100; usedLP.add(idx); }
+    else { putCollateral += sp.strike * 100; }
+  }
+
+  // CALL side: pair each short call with a higher long call. Unpaired = naked (need 100 shares).
+  let callCollateral = 0;
+  const usedLC = new Set();
+  for (const sc of shortCalls) {
+    const idx = longCalls.findIndex((lc, i) => !usedLC.has(i) && lc.strike > sc.strike);
+    if (idx >= 0) { callCollateral += (longCalls[idx].strike - sc.strike) * 100; usedLC.add(idx); }
+    else { callCollateral += S * 100; } // naked short call
+  }
+
+  // Iron-condor style: broker holds GREATER of the two sides (only one can be assigned).
+  // Single-sided: just that side.
+  let total = (putCollateral > 0 && callCollateral > 0)
+    ? Math.max(putCollateral, callCollateral)
+    : putCollateral + callCollateral;
+
+  // Pure debit trade (no shorts) → collateral = debit paid
+  if (total === 0 && netPremium < 0) total = -netPremium;
+
+  return total;
+}
+
+// ---------- CUSTOM TRADE BUILDER ----------
+let customLegs = [];
+
+function buildCustomBuilder() {
+  if (!State.currentData) return;
+  const expSel = document.getElementById('cbExp');
+  if (!expSel) return;
+  const expirations = [...new Set(State.currentData.chain.map(o => o.expiration))].sort();
+  expSel.innerHTML = expirations.map(e => `<option value="${e}">${fmt.shortDate(e)} · ${fmt.dte(e)}d</option>`).join('');
+  // pick a ~30 DTE expiry by default
+  const target = expirations.find(e => fmt.dte(e) >= 21 && fmt.dte(e) <= 45) || expirations[0];
+  if (target) expSel.value = target;
+  // restore # contracts
+  const savedContracts = parseInt(localStorage.getItem('of_contracts') || '1', 10);
+  document.getElementById('cbContracts').value = savedContracts > 0 ? savedContracts : 1;
+  // default to PCS template
+  document.getElementById('cbTemplate').value = 'pcs';
+  applyCustomTemplate();
+}
+
+function applyCustomTemplate() {
+  const tmpl = document.getElementById('cbTemplate').value;
+  if (!State.currentData) return;
+  const exp = document.getElementById('cbExp').value;
+  const S = State.currentData.quote.last;
+  const chain = State.currentData.chain;
+  const puts = chain.filter(o => o.expiration === exp && o.type === 'put').sort((a,b) => b.strike - a.strike);
+  const calls = chain.filter(o => o.expiration === exp && o.type === 'call').sort((a,b) => a.strike - b.strike);
+  const nearD = (arr, val) => arr.length ? arr.reduce((b, o) => Math.abs(o.delta - val) < Math.abs(b.delta - val) ? o : b, arr[0]) : null;
+  const nearStrike = (arr, val) => arr.length ? arr.reduce((b, o) => Math.abs(o.strike - val) < Math.abs(b.strike - val) ? o : b, arr[0]) : null;
+  const atm = nearStrike(calls, S);
+  const wid = S < 25 ? 1 : S < 100 ? 5 : 10;
+
+  if (tmpl === 'custom') {
+    customLegs = [{ action: 'SELL', type: 'put', strike: atm?.strike || S }];
+  } else if (tmpl === 'long_call') {
+    customLegs = [{ action: 'BUY', type: 'call', strike: atm?.strike || S }];
+  } else if (tmpl === 'long_put') {
+    customLegs = [{ action: 'BUY', type: 'put', strike: atm?.strike || S }];
+  } else if (tmpl === 'csp') {
+    const sp = nearD(puts, -0.30);
+    customLegs = [{ action: 'SELL', type: 'put', strike: sp?.strike || (atm?.strike - wid) }];
+  } else if (tmpl === 'cc') {
+    const sc = nearD(calls, 0.30);
+    customLegs = [{ action: 'SELL', type: 'call', strike: sc?.strike || (atm?.strike + wid) }];
+  } else if (tmpl === 'pcs') {
+    const sp = nearD(puts, -0.27);
+    const lp = puts.find(p => p.strike < (sp?.strike || S) - wid + 0.01) || puts[puts.length - 1];
+    customLegs = [
+      { action: 'SELL', type: 'put', strike: sp?.strike || (atm?.strike - wid) },
+      { action: 'BUY', type: 'put', strike: lp?.strike || ((sp?.strike || atm?.strike) - wid * 2) },
+    ];
+  } else if (tmpl === 'ccs') {
+    const sc = nearD(calls, 0.27);
+    const lc = calls.find(c => c.strike > (sc?.strike || S) + wid - 0.01) || calls[calls.length - 1];
+    customLegs = [
+      { action: 'SELL', type: 'call', strike: sc?.strike || (atm?.strike + wid) },
+      { action: 'BUY', type: 'call', strike: lc?.strike || ((sc?.strike || atm?.strike) + wid * 2) },
+    ];
+  } else if (tmpl === 'pds') {
+    const lp = nearD(puts, -0.45);
+    const sp = puts.find(p => p.strike < (lp?.strike || S) - wid + 0.01) || puts[puts.length - 1];
+    customLegs = [
+      { action: 'BUY', type: 'put', strike: lp?.strike || atm?.strike },
+      { action: 'SELL', type: 'put', strike: sp?.strike || (atm?.strike - wid * 2) },
+    ];
+  } else if (tmpl === 'cds') {
+    const lc = nearD(calls, 0.45);
+    const sc = calls.find(c => c.strike > (lc?.strike || S) + wid - 0.01) || calls[calls.length - 1];
+    customLegs = [
+      { action: 'BUY', type: 'call', strike: lc?.strike || atm?.strike },
+      { action: 'SELL', type: 'call', strike: sc?.strike || (atm?.strike + wid * 2) },
+    ];
+  } else if (tmpl === 'ic') {
+    const sp = nearD(puts, -0.15), sc = nearD(calls, 0.15);
+    const lp = puts.find(p => p.strike < (sp?.strike || S)) || puts[puts.length - 1];
+    const lc = calls.find(c => c.strike > (sc?.strike || S)) || calls[calls.length - 1];
+    customLegs = [
+      { action: 'BUY', type: 'put', strike: lp?.strike || (atm?.strike - wid * 3) },
+      { action: 'SELL', type: 'put', strike: sp?.strike || (atm?.strike - wid * 2) },
+      { action: 'SELL', type: 'call', strike: sc?.strike || (atm?.strike + wid * 2) },
+      { action: 'BUY', type: 'call', strike: lc?.strike || (atm?.strike + wid * 3) },
+    ];
+  } else if (tmpl === 'strangle') {
+    const sp = nearD(puts, -0.30), sc = nearD(calls, 0.30);
+    customLegs = [
+      { action: 'SELL', type: 'put', strike: sp?.strike || (atm?.strike - wid) },
+      { action: 'SELL', type: 'call', strike: sc?.strike || (atm?.strike + wid) },
+    ];
+  } else if (tmpl === 'straddle') {
+    customLegs = [
+      { action: 'BUY', type: 'put', strike: atm?.strike || S },
+      { action: 'BUY', type: 'call', strike: atm?.strike || S },
+    ];
+  }
+  renderCustomLegs();
+  analyzeCustom();
+}
+
+function renderCustomLegs() {
+  if (!State.currentData) return;
+  const exp = document.getElementById('cbExp').value;
+  const chain = State.currentData.chain;
+  const wrap = document.getElementById('cbLegs');
+  wrap.innerHTML = customLegs.map((leg, idx) => {
+    const strikes = [...new Set(chain.filter(o => o.expiration === exp && o.type === leg.type).map(o => o.strike))].sort((a,b) => a - b);
+    const opts = strikes.map(k => `<option value="${k}" ${k === leg.strike ? 'selected' : ''}>${fmt.usd(k)}</option>`).join('');
+    return `
+      <div class="cb-leg" style="display:grid;grid-template-columns:90px 90px 1fr 28px;gap:8px;align-items:center;background:var(--bg-2);border:1px solid var(--border);border-radius:6px;padding:8px">
+        <select onchange="updateCustomLeg(${idx},'action',this.value)" style="padding:5px;background:var(--bg-1);border:1px solid var(--border);color:${leg.action === 'SELL' ? '#00ff88' : '#ff8c4a'};border-radius:4px;font-family:var(--mono);font-weight:600">
+          <option value="BUY" ${leg.action === 'BUY' ? 'selected' : ''}>BUY</option>
+          <option value="SELL" ${leg.action === 'SELL' ? 'selected' : ''}>SELL</option>
+        </select>
+        <select onchange="updateCustomLeg(${idx},'type',this.value)" style="padding:5px;background:var(--bg-1);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;font-family:var(--mono)">
+          <option value="put" ${leg.type === 'put' ? 'selected' : ''}>PUT</option>
+          <option value="call" ${leg.type === 'call' ? 'selected' : ''}>CALL</option>
+        </select>
+        <select onchange="updateCustomLeg(${idx},'strike',parseFloat(this.value))" style="padding:5px;background:var(--bg-1);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;font-family:var(--mono)">${opts}</select>
+        <button onclick="removeCustomLeg(${idx})" style="background:transparent;border:1px solid var(--border);color:var(--accent-red);border-radius:4px;cursor:pointer;font-size:14px;padding:4px">×</button>
+      </div>`;
+  }).join('');
+}
+
+function updateCustomLeg(idx, field, val) {
+  customLegs[idx][field] = val;
+  // if type changed, ensure strike still exists
+  if (field === 'type') {
+    const exp = document.getElementById('cbExp').value;
+    const strikes = [...new Set(State.currentData.chain.filter(o => o.expiration === exp && o.type === val).map(o => o.strike))].sort((a,b) => a - b);
+    if (!strikes.includes(customLegs[idx].strike)) customLegs[idx].strike = strikes[Math.floor(strikes.length/2)] || customLegs[idx].strike;
+    renderCustomLegs();
+  }
+  analyzeCustom();
+}
+
+function addCustomLeg() {
+  if (!State.currentData) return;
+  const S = State.currentData.quote.last;
+  customLegs.push({ action: 'SELL', type: 'put', strike: Math.round(S) });
+  renderCustomLegs();
+  analyzeCustom();
+}
+
+function removeCustomLeg(idx) {
+  customLegs.splice(idx, 1);
+  renderCustomLegs();
+  analyzeCustom();
+}
+
+// Compute full metrics for any combination of legs
+function computeTradeMetrics(legs, exp) {
+  if (!State.currentData || !legs.length) return null;
+  const S = State.currentData.quote.last;
+  const chain = State.currentData.chain;
+  const findOpt = (leg) => chain.find(o => o.expiration === exp && o.type === leg.type && Math.abs(o.strike - leg.strike) < 0.01);
+
+  const enriched = legs.map(l => {
+    const opt = findOpt(l);
+    if (!opt) return null;
+    const price = l.action === 'SELL' ? opt.bid : opt.ask;
+    return { ...l, price, delta: opt.delta, theta: opt.theta, vega: opt.vega, iv: opt.iv };
+  });
+  if (enriched.some(x => x == null)) return null;
+
+  const dte = fmt.dte(exp);
+  // net premium (positive = credit received, negative = debit paid)
+  let netPremium = 0;
+  let netDelta = 0, netTheta = 0, netVega = 0;
+  for (const l of enriched) {
+    const sign = l.action === 'SELL' ? 1 : -1;
+    netPremium += sign * l.price * 100;
+    netDelta += sign * l.delta;
+    netTheta += sign * l.theta;
+    netVega += sign * l.vega;
+  }
+
+  // numeric P/L scan from -50% to +50% of spot to find max profit, max loss, breakevens
+  const lo = S * 0.4, hi = S * 1.6;
+  const steps = 400;
+  const points = [];
+  for (let i = 0; i <= steps; i++) {
+    const p = lo + (hi - lo) * (i / steps);
+    let pnl = 0;
+    for (const l of enriched) {
+      const intrinsic = l.type === 'call' ? Math.max(0, p - l.strike) : Math.max(0, l.strike - p);
+      const sign = l.action === 'SELL' ? 1 : -1;
+      pnl += sign * (l.price - intrinsic) * 100;
+    }
+    points.push({ p, pnl });
+  }
+  const pnlMax = Math.max(...points.map(x => x.pnl));
+  const pnlMin = Math.min(...points.map(x => x.pnl));
+
+  // Detect undefined risk: check the slope at the very edges
+  const leftSlope = points[1].pnl - points[0].pnl;
+  const rightSlope = points[points.length - 1].pnl - points[points.length - 2].pnl;
+  const undefinedDown = leftSlope < -0.01;
+  const undefinedUp = rightSlope > 0.01 ? false : (rightSlope < -0.01);
+  const isUndefined = undefinedDown || undefinedUp;
+
+  // Find breakevens
+  const breakevens = [];
+  for (let i = 1; i < points.length; i++) {
+    if ((points[i-1].pnl <= 0 && points[i].pnl > 0) || (points[i-1].pnl >= 0 && points[i].pnl < 0)) {
+      const t = points[i-1].pnl / (points[i-1].pnl - points[i].pnl);
+      breakevens.push(points[i-1].p + t * (points[i].p - points[i-1].p));
+    }
+  }
+  const beLow = breakevens[0] || null;
+  const beHigh = breakevens[breakevens.length - 1] || null;
+
+  const maxProfit = Math.max(0, pnlMax);
+  const maxLoss = isUndefined ? null : Math.max(0, -pnlMin);
+
+  // BPR estimate
+  let bpr;
+  if (maxLoss != null) {
+    bpr = maxLoss;
+  } else {
+    // Naked short approximation: 20% of strike notional for each naked short
+    bpr = 0;
+    for (const l of enriched) {
+      if (l.action === 'SELL') bpr += l.strike * 100 * 0.20;
+    }
+  }
+
+  // PoP via delta proxy: probability price ends up in profit zone
+  // For credit trades (netPremium > 0): PoP ≈ width of profit zone / total range
+  let pop;
+  if (breakevens.length === 2) {
+    // Bounded profit zone (condor / strangle / spread). Width as percent of expected move.
+    const expMove = S * (enriched[0].iv || 0.3) * Math.sqrt(dte / 365);
+    // probability spot stays between breakevens — rough normal approx
+    const zLo = (breakevens[0] - S) / Math.max(0.01, expMove);
+    const zHi = (breakevens[1] - S) / Math.max(0.01, expMove);
+    const N = (z) => 0.5 * (1 + Math.tanh(z * 0.7978)); // crude normal CDF
+    pop = (N(zHi) - N(zLo)) * 100;
+  } else if (breakevens.length === 1) {
+    const be = breakevens[0];
+    const expMove = S * (enriched[0].iv || 0.3) * Math.sqrt(dte / 365);
+    const z = (be - S) / Math.max(0.01, expMove);
+    const N = (z) => 0.5 * (1 + Math.tanh(z * 0.7978));
+    // direction of profitability: check sign at spot
+    const atSpot = points.find(pt => pt.p >= S);
+    if (atSpot && atSpot.pnl > 0) pop = (be > S ? N(z) : 1 - N(z)) * 100;
+    else pop = (be > S ? 1 - N(z) : N(z)) * 100;
+  } else {
+    pop = (netPremium > 0) ? 60 : 40;
+  }
+  pop = Math.min(95, Math.max(5, pop));
+
+  const roc = maxLoss != null && maxLoss > 0 ? (maxProfit / maxLoss) * 100 : (bpr > 0 ? (maxProfit / bpr) * 100 : 0);
+  const pot = Math.min(95, 100 - pop + 10);
+
+  const cashCollateral = computeCashCollateral(enriched, S, maxLoss, netPremium);
+  const avgIv = enriched.reduce((s, l) => s + (l.iv || 0), 0) / enriched.length;
+
+  return {
+    legs: enriched.map(l => ({ action: l.action, type: l.type, strike: l.strike, price: l.price })),
+    credit: netPremium > 0 ? netPremium : 0,
+    debit: netPremium < 0 ? -netPremium : 0,
+    maxProfit, maxLoss,
+    beLow, beHigh: beHigh ?? Infinity,
+    roc, pop, pot,
+    days50: Math.round(dte * 0.5),
+    bpr,
+    cashCollateral,
+    avgIv,
+    netDelta, netTheta, netVega,
+    dte, expiration: exp,
+    netPremium,
+  };
+}
+
+function analyzeCustom() {
+  const wrap = document.getElementById('cbResult');
+  const collDisplay = document.getElementById('cbCollateralDisplay');
+  if (!wrap) return;
+  if (collDisplay) collDisplay.textContent = '$0.00';
+  if (!State.currentData) { wrap.innerHTML = ''; return; }
+  if (!customLegs.length) {
+    wrap.innerHTML = `<div class="empty-state" style="padding:20px"><div class="msg">Add at least one leg to analyze.</div></div>`;
+    return;
+  }
+  const exp = document.getElementById('cbExp').value;
+  const t = computeTradeMetrics(customLegs, exp);
+  if (!t) {
+    wrap.innerHTML = `<div class="empty-state" style="padding:20px"><div class="msg">One or more strikes not found in the chain. Try different strikes.</div></div>`;
+    return;
+  }
+  // Dynamic tier
+  const sc = scoreTrade(t);
+  t.tier = sc.tier; t.icon = sc.icon;
+  t.label = labelForLegs(customLegs);
+
+  const S = State.currentData.quote.last;
+  const N = getContracts();
+
+  // Live collateral readout in form
+  if (collDisplay) collDisplay.textContent = fmt.usd(t.cashCollateral * N);
+
+  // ---- Richer analysis derivations ----
+  const expMove = S * (t.avgIv || 0.3) * Math.sqrt(t.dte / 365);
+  const sigmaLow = S - expMove;
+  const sigmaHigh = S + expMove;
+  const thetaPerDay = t.netTheta * 100; // $ per day per contract
+  const premiumPerDay = (t.netPremium > 0 ? t.netPremium : -t.netPremium) / Math.max(1, t.dte);
+  const rrRatio = t.maxLoss != null && t.maxLoss > 0 && t.maxProfit > 0 ? (t.maxProfit / t.maxLoss) : null;
+  const beLowDistPct = t.beLow != null ? ((t.beLow - S) / S) * 100 : null;
+  const beHighDistPct = (t.beHigh != null && isFinite(t.beHigh)) ? ((t.beHigh - S) / S) * 100 : null;
+
+  // Aggregate over N contracts
+  const totalMaxProfit = t.maxProfit * N;
+  const totalMaxLoss = t.maxLoss != null ? t.maxLoss * N : null;
+  const totalCollateral = t.cashCollateral * N;
+  const totalMargin = t.bpr * N;
+  const totalCredit = (t.credit || -t.debit || t.netPremium) * N;
+
+  const stat = (label, value, color, hint) => `
+    <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:6px;padding:10px">
+      <div style="font-size:10px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">${label}</div>
+      <div style="font-family:var(--mono);font-size:15px;font-weight:600;color:${color || 'var(--text-primary)'}">${value}</div>
+      ${hint ? `<div style="font-size:10px;color:var(--text-secondary);margin-top:2px">${hint}</div>` : ''}
+    </div>`;
+
+  const richStats = `
+    <div style="margin-top:12px">
+      <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;font-family:var(--mono)">📊 Detailed Analysis · ${N} contract${N === 1 ? '' : 's'}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
+        ${stat('Net ' + (t.netPremium > 0 ? 'Credit' : 'Debit'), fmt.usd(Math.abs(totalCredit)), t.netPremium > 0 ? '#00ff88' : '#ff8c4a', `${fmt.usd(Math.abs(t.netPremium))} per contract`)}
+        ${stat('Total Collateral', fmt.usd(totalCollateral), '#4a9eff', 'Cash held back / cash-secured')}
+        ${stat('Total Margin (BPR)', fmt.usd(totalMargin), '#4a9eff', 'Broker buying-power reduction')}
+        ${stat('Max Profit', fmt.usd(totalMaxProfit), '#00ff88', `${fmt.usd(t.maxProfit)} per contract`)}
+        ${stat('Max Loss', totalMaxLoss != null ? fmt.usd(totalMaxLoss) : 'Undefined ⚠', totalMaxLoss != null ? '#ff3b5c' : '#ff8c4a', totalMaxLoss != null ? `${fmt.usd(t.maxLoss)} per contract` : 'Naked short — theoretically unlimited')}
+        ${stat('Return on Collateral', `${(totalMaxProfit / Math.max(1, totalCollateral) * 100).toFixed(2)}%`, '#00ff88', `Annualized: ${(totalMaxProfit / Math.max(1, totalCollateral) * 365 / Math.max(1, t.dte) * 100).toFixed(1)}%`)}
+        ${stat('Premium / Day', fmt.usd(premiumPerDay * N), '#00ff88', `${t.dte} DTE`)}
+        ${stat('Theta Decay / Day', fmt.usd(thetaPerDay * N), thetaPerDay >= 0 ? '#00ff88' : '#ff3b5c', 'Daily P&L from time decay')}
+        ${stat('Implied Vol', fmt.pct((t.avgIv || 0) * 100, 1), null, 'Average across legs')}
+        ${stat('Expected Move ±1σ', `±${fmt.usd(expMove)}`, null, `${fmt.usd(sigmaLow)} – ${fmt.usd(sigmaHigh)}`)}
+        ${stat('PoP (1σ approx)', `${t.pop.toFixed(0)}%`, t.pop >= 65 ? '#00ff88' : t.pop >= 50 ? '#ffb84a' : '#ff3b5c', 'Probability of profit at expiry')}
+        ${stat('Risk : Reward', rrRatio != null ? `1 : ${(1/rrRatio).toFixed(2)}` : 'N/A', rrRatio != null && rrRatio >= 0.5 ? '#00ff88' : '#ffb84a', rrRatio != null ? `Win ${fmt.usd(t.maxProfit)} vs lose ${fmt.usd(t.maxLoss)}` : 'Undefined risk')}
+        ${beLowDistPct != null ? stat('BE Low', fmt.usd(t.beLow), null, `${beLowDistPct >= 0 ? '+' : ''}${beLowDistPct.toFixed(2)}% from spot`) : ''}
+        ${beHighDistPct != null ? stat('BE High', fmt.usd(t.beHigh), null, `+${beHighDistPct.toFixed(2)}% from spot`) : ''}
+        ${stat('Net Δ', t.netDelta.toFixed(3), Math.abs(t.netDelta) < 0.15 ? '#00ff88' : Math.abs(t.netDelta) < 0.4 ? '#ffb84a' : '#ff3b5c', t.netDelta > 0 ? 'Bullish bias' : t.netDelta < 0 ? 'Bearish bias' : 'Neutral')}
+        ${stat('Net Vega', (t.netVega * 100).toFixed(1), null, t.netVega < 0 ? 'Profits if IV drops' : 'Profits if IV rises')}
+      </div>
+    </div>`;
+
+  // Plain-English commentary
+  const greekBias = t.netDelta > 0.15 ? 'bullish' : t.netDelta < -0.15 ? 'bearish' : 'neutral';
+  const vegaBias = t.netVega < -0.02 ? 'short volatility (profits if IV drops)' : t.netVega > 0.02 ? 'long volatility (profits if IV rises)' : 'vol-neutral';
+  const thetaBias = thetaPerDay > 0 ? `<strong style="color:#00ff88">earning ${fmt.usd(thetaPerDay * N)}/day</strong> from time decay` : `<strong style="color:#ff3b5c">losing ${fmt.usd(Math.abs(thetaPerDay) * N)}/day</strong> to time decay`;
+  const winLine = t.beLow != null && t.beHigh != null && isFinite(t.beHigh)
+    ? `Profitable if underlying stays between <strong>${fmt.usd(t.beLow)}</strong> and <strong>${fmt.usd(t.beHigh)}</strong> at expiry.`
+    : t.beLow != null
+    ? `Profitable if underlying stays <strong>${t.netDelta > 0 ? 'above' : 'below'} ${fmt.usd(t.beLow)}</strong> at expiry.`
+    : 'Profit zone depends on volatility / movement.';
+
+  const commentary = `
+    <div style="margin-top:12px;padding:14px;background:var(--bg-1);border:1px solid var(--border);border-radius:8px;font-size:12px;line-height:1.6">
+      <div style="font-size:10px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;font-family:var(--mono)">💬 Plain English</div>
+      <div style="color:var(--text-primary)">
+        This is a <strong style="color:${t.tier === 'conservative' ? '#00ff88' : t.tier === 'moderate' ? '#ffb84a' : '#ff3b5c'}">${t.tier}</strong> trade (score ${(sc.score * 100).toFixed(0)}/100), <strong>${greekBias}</strong> directionally and <strong>${vegaBias}</strong>. You're ${thetaBias}.
+        ${winLine}
+        Risk:reward is <strong>${rrRatio != null ? `1:${(1/rrRatio).toFixed(2)}` : 'undefined'}</strong> — ${rrRatio != null && rrRatio >= 0.5 ? 'favorable' : rrRatio != null ? 'you need a high win rate to break even long-term' : 'unbounded loss potential, size carefully'}.
+        Total capital tied up: <strong style="color:#4a9eff">${fmt.usd(totalCollateral)}</strong> (cash) / <strong style="color:#4a9eff">${fmt.usd(totalMargin)}</strong> (margin BPR).
+      </div>
+    </div>`;
+
+  wrap.innerHTML = `
+    <div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px;font-family:var(--mono)">⚡ ANALYSIS · ${t.label} · score ${(sc.score * 100).toFixed(0)}/100</div>
+    ${mlCard(t, S)}
+    ${richStats}
+    ${commentary}`;
+}
+
+function labelForLegs(legs) {
+  const tmpl = document.getElementById('cbTemplate')?.value;
+  const map = { custom: 'Custom Trade', long_call: 'Long Call', long_put: 'Long Put', csp: 'Cash-Secured Put', cc: 'Covered Call', pcs: 'Put Credit Spread', ccs: 'Call Credit Spread', pds: 'Put Debit Spread', cds: 'Call Debit Spread', ic: 'Iron Condor', strangle: 'Short Strangle', straddle: 'Long Straddle' };
+  return map[tmpl] || 'Custom Trade';
 }
 
 // ---------- POSITIONS & JOURNAL ----------
